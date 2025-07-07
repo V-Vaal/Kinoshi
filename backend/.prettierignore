@@ -1,0 +1,8 @@
+artifacts/
+cache/
+typechain/
+typechain-types/
+build/
+coverage/
+.env
+node_modules/
