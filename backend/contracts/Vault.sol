@@ -60,7 +60,7 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     // Dépôt avec choix de stratégie
     function deposit(uint256 assets, address receiver, string memory strategyId)
         public
-        whenNotPaused
+        whenNotPausedCustom
         returns (uint256)
     {
         if (!whitelistedStrategies[strategyId]) revert InvalidStrategy();
@@ -74,7 +74,7 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     // Retrait classique ERC-4626
     function withdraw(uint256 assets, address receiver, address owner)
         public
-        whenNotPaused
+        whenNotPausedCustom
         nonReentrant
         override
         returns (uint256)
@@ -89,7 +89,7 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     // Redeem avec protection reentrancy
     function redeem(uint256 shares, address receiver, address owner)
         public
-        whenNotPaused
+        whenNotPausedCustom
         nonReentrant
         override
         returns (uint256)
@@ -103,22 +103,24 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         return IERC20(asset()).balanceOf(address(this));
     }
 
-    // Conversion assets <-> shares (ratio 1:1 initial)
-    function convertToAssets(uint256 shares) public view override returns (uint256) {
-        return super.convertToAssets(shares);
+    // Décalage de décimales pour ERC4626 (MockUSDC 6 décimales, shares 18 décimales)
+    function _decimalsOffset() internal view override returns (uint8) {
+        return 12;
     }
 
-    function convertToShares(uint256 assets) public view override returns (uint256) {
-        return super.convertToShares(assets);
-    }
-
-    // receive et fallback : revert explicite
+    // receive et fallback : revert explicite avec custom error
     receive() external payable {
-        revert();
+        revert EtherNotAccepted();
     }
 
     fallback() external payable {
-        revert();
+        revert EtherNotAccepted();
+    }
+
+    // Surcharge du modificateur whenNotPaused pour utiliser la custom error
+    modifier whenNotPausedCustom() {
+        if (paused()) revert Pausable__Paused();
+        _;
     }
 
     // Pause/unpause (owner only)

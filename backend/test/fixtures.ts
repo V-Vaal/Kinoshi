@@ -6,8 +6,8 @@ export async function deployVaultFixture() {
   const [owner, user1, user2] = await ethers.getSigners();
 
   // Déploiement du MockUSDC (6 décimales)
-  const ERC20Mock = await ethers.getContractFactory("ERC20Mock");
-  const mockUSDC = await ERC20Mock.deploy("Mock USDC", "mUSDC", 6);
+  const MockUSDC = await ethers.getContractFactory("MockUSDC");
+  const mockUSDC = await MockUSDC.deploy("Mock USDC", "mUSDC", 6);
   // Déploiement du Vault
   const Vault = await ethers.getContractFactory("Vault");
   const vault = await Vault.deploy(await mockUSDC.getAddress());

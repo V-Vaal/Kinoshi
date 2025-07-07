@@ -6,4 +6,6 @@ error InvalidStrategy();
 error NotOwner();
 error InvalidWeightSum();
 error VaultPaused();
-error ZeroAddress(); 
+error ZeroAddress();
+error EtherNotAccepted();
+error Pausable__Paused(); 
