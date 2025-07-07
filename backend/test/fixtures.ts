@@ -1,7 +1,6 @@
 import { ethers } from "hardhat";
 import { parseUnits } from "ethers";
 
-
 export async function deployVaultFixture() {
   const [owner, user1, user2] = await ethers.getSigners();
 
@@ -24,4 +23,4 @@ export async function deployVaultFixture() {
   await vault.connect(owner).addStrategy(strategyId, allocations);
 
   return { vault, mockUSDC, owner, user1, user2, strategyId };
-} 
+}
