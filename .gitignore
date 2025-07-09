@@ -1,2 +1,31 @@
 .env*
-.context.md
+context.md
+Plan Technique Détaillé v1.1.md
+
+# sécurité et propreté
+*.md~          
+*.local        
+*.log
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Hardhat
+cache/
+artifacts/
+typechain-types/
+
+# Next.js
+.next/
+out/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
