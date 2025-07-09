@@ -26,7 +26,7 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     // Constructeur : initialisation ERC4626 avec MockUSDC comme asset()
     constructor(IERC20 asset_)
         ERC4626(asset_)
-        ERC20("OneToken Vault Share", "1TVS")
+        ERC20("Kinoshi Vault Share", "KNSHVS")
         Ownable(msg.sender)
         Pausable()
         ReentrancyGuard()

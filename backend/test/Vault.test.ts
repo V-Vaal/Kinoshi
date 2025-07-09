@@ -3,7 +3,7 @@ import { ethers } from "hardhat";
 import { expect } from "chai";
 import { Vault, MockUSDC } from "../typechain-types";
 
-describe("Vault.sol – OneToken", function () {
+describe("Vault.sol – Kinoshi", function () {
   async function deployVaultFixture() {
     const [owner, user, other] = await ethers.getSigners();
 
