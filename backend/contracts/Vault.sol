@@ -15,12 +15,15 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     }
 
     // Mapping des stratégies : id => allocations
-    mapping(string => AssetAllocation[]) public strategies;
+    mapping(uint256 => AssetAllocation[]) public strategyAllocations;
 
     // Mapping pour vérifier la whitelist
-    mapping(string => bool) public whitelistedStrategies;
+    mapping(uint256 => bool) public whitelistedStrategies;
 
-    event DepositWithStrategy(address indexed user, string strategyId, uint256 amount);
+    // Tableau pour stocker tous les IDs de stratégie
+    uint256[] private strategyIds;
+
+    event DepositWithStrategy(address indexed user, uint256 strategyId, uint256 amount);
     event WithdrawExecuted(address indexed user, address indexed receiver, uint256 assets);
 
     // Constructeur : initialisation ERC4626 avec MockUSDC comme asset()
@@ -32,33 +35,53 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         ReentrancyGuard()
     {}
 
-    // Ajout d'une stratégie (owner only)
-    function addStrategy(string memory strategyId, AssetAllocation[] memory allocations) external onlyOwner {
-        if (bytes(strategyId).length == 0) revert InvalidStrategy();
+    /**
+     * @dev Retourne la liste complète des IDs de stratégie actuellement enregistrés
+     * @return Tableau contenant tous les strategyId actuellement whitelistés
+     */
+    function getStrategyIds() external view returns (uint256[] memory) {
+        return strategyIds;
+    }
 
-        delete strategies[strategyId];
+    // Ajout d'une stratégie (owner only)
+    function setStrategyAllocations(uint256 strategyId, AssetAllocation[] memory allocations) external onlyOwner {
+        delete strategyAllocations[strategyId];
 
         uint256 totalWeight;
         for (uint256 i = 0; i < allocations.length; i++) {
             if (allocations[i].token == address(0)) revert ZeroAddress();
-            strategies[strategyId].push(allocations[i]);
+            strategyAllocations[strategyId].push(allocations[i]);
             if (allocations[i].active) {
                 totalWeight += allocations[i].weight;
             }
         }
 
         if (totalWeight != 1e18) revert InvalidWeightSum();
+        
+        // Ajouter l'ID à la liste s'il n'existe pas déjà
+        if (!whitelistedStrategies[strategyId]) {
+            strategyIds.push(strategyId);
+        }
         whitelistedStrategies[strategyId] = true;
     }
 
     // Suppression d'une stratégie (owner only)
-    function removeStrategy(string memory strategyId) external onlyOwner {
-        delete strategies[strategyId];
+    function removeStrategy(uint256 strategyId) external onlyOwner {
+        delete strategyAllocations[strategyId];
         whitelistedStrategies[strategyId] = false;
+        
+        // Retirer l'ID de la liste
+        for (uint256 i = 0; i < strategyIds.length; i++) {
+            if (strategyIds[i] == strategyId) {
+                strategyIds[i] = strategyIds[strategyIds.length - 1];
+                strategyIds.pop();
+                break;
+            }
+        }
     }
 
     // Dépôt avec choix de stratégie
-    function deposit(uint256 assets, address receiver, string memory strategyId)
+    function deposit(uint256 assets, address receiver, uint256 strategyId)
         public
         whenNotPausedCustom
         returns (uint256)
