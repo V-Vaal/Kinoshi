@@ -1,8 +1,8 @@
-# OneToken
+# Kinoshi
 
 ## Résumé
 
-OneToken est une application décentralisée (DApp) basée sur un smart contract ERC-4626 permettant à des utilisateurs de s’exposer à un portefeuille diversifié d’actifs tokenisés (RWA) selon différents profils de risque.
+Kinoshi est une application décentralisée (DApp) basée sur un smart contract ERC-4626 permettant à des utilisateurs de s’exposer à un portefeuille diversifié d’actifs tokenisés (RWA) selon différents profils de risque.
 
 Le projet est conçu dans le cadre des formations Développement Blockchain et DeFi par Alyra, avec une priorité donnée à la sécurité, la maintenabilité, la pédagogie et les bonnes pratiques Solidity.
 

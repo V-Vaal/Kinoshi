@@ -8,4 +8,7 @@ error InvalidWeightSum();
 error VaultPaused();
 error ZeroAddress();
 error EtherNotAccepted();
-error Pausable__Paused(); 
+error Pausable__Paused();
+error InvalidSymbol();
+error TokenAlreadyRegistered();
+error TokenNotRegistered(); 
