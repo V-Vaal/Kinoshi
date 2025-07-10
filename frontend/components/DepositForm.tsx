@@ -20,7 +20,11 @@ interface DepositFormProps {
   strategyId: string
 }
 
-export function DepositForm({ vaultAddress, usdcAddress, strategyId }: DepositFormProps) {
+export function DepositForm({
+  vaultAddress,
+  usdcAddress,
+  strategyId,
+}: DepositFormProps) {
   const { address, isConnected } = useAccount()
   const [amount, setAmount] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -37,7 +41,7 @@ export function DepositForm({ vaultAddress, usdcAddress, strategyId }: DepositFo
     }
 
     setIsLoading(true)
-    
+
     try {
       // Simulated deposit for demo
       toast.info('Fonctionnalité à implémenter - Dépôt')
@@ -76,7 +80,8 @@ export function DepositForm({ vaultAddress, usdcAddress, strategyId }: DepositFo
       <CardHeader>
         <CardTitle>Dépôt USDC</CardTitle>
         <CardDescription>
-          Déposez des USDC pour recevoir des parts du vault selon la stratégie {strategyId}
+          Déposez des USDC pour recevoir des parts du vault selon la stratégie{' '}
+          {strategyId}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -91,8 +96,8 @@ export function DepositForm({ vaultAddress, usdcAddress, strategyId }: DepositFo
             disabled={isLoading}
           />
         </div>
-        
-        <Button 
+
+        <Button
           onClick={handleDeposit}
           disabled={isLoading || !amount || parseFloat(amount) <= 0}
           className="w-full"

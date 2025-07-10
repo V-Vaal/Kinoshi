@@ -19,9 +19,7 @@ interface AdminPanelProps {
   tokenRegistryAddress: string
 }
 
-export function AdminPanel({
-  vaultAddress,
-}: AdminPanelProps) {
+export function AdminPanel({ vaultAddress }: AdminPanelProps) {
   const { isConnected } = useAccount()
   const [exitFeeBps, setExitFeeBps] = useState('50') // 0.5%
   const [managementFeeBps, setManagementFeeBps] = useState('100') // 1%
@@ -32,7 +30,7 @@ export function AdminPanel({
     gold: '2000',
     btc: '45000',
     bonds: '100',
-    equity: '50'
+    equity: '50',
   })
 
   const handlePause = () => {
@@ -81,14 +79,14 @@ export function AdminPanel({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex space-x-2">
-            <Button 
+            <Button
               onClick={handlePause}
               disabled={isLoading}
               variant="destructive"
             >
               {isLoading ? 'Mise en pause...' : 'Pause Vault'}
             </Button>
-            <Button 
+            <Button
               onClick={handleUnpause}
               disabled={isLoading}
               variant="outline"
@@ -122,7 +120,9 @@ export function AdminPanel({
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="managementFee">Frais de gestion (basis points)</Label>
+              <Label htmlFor="managementFee">
+                Frais de gestion (basis points)
+              </Label>
               <Input
                 id="managementFee"
                 type="number"
@@ -156,7 +156,9 @@ export function AdminPanel({
                 id="goldPrice"
                 type="number"
                 value={mockPrices.gold}
-                onChange={(e) => setMockPrices(prev => ({ ...prev, gold: e.target.value }))}
+                onChange={(e) =>
+                  setMockPrices((prev) => ({ ...prev, gold: e.target.value }))
+                }
                 placeholder="2000"
               />
             </div>
@@ -166,7 +168,9 @@ export function AdminPanel({
                 id="btcPrice"
                 type="number"
                 value={mockPrices.btc}
-                onChange={(e) => setMockPrices(prev => ({ ...prev, btc: e.target.value }))}
+                onChange={(e) =>
+                  setMockPrices((prev) => ({ ...prev, btc: e.target.value }))
+                }
                 placeholder="45000"
               />
             </div>
@@ -176,7 +180,9 @@ export function AdminPanel({
                 id="bondsPrice"
                 type="number"
                 value={mockPrices.bonds}
-                onChange={(e) => setMockPrices(prev => ({ ...prev, bonds: e.target.value }))}
+                onChange={(e) =>
+                  setMockPrices((prev) => ({ ...prev, bonds: e.target.value }))
+                }
                 placeholder="100"
               />
             </div>
@@ -186,7 +192,9 @@ export function AdminPanel({
                 id="equityPrice"
                 type="number"
                 value={mockPrices.equity}
-                onChange={(e) => setMockPrices(prev => ({ ...prev, equity: e.target.value }))}
+                onChange={(e) =>
+                  setMockPrices((prev) => ({ ...prev, equity: e.target.value }))
+                }
                 placeholder="50"
               />
             </div>

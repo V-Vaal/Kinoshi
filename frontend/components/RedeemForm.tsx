@@ -44,7 +44,7 @@ export function RedeemForm({ vaultAddress }: RedeemFormProps) {
     }
 
     setIsLoading(true)
-    
+
     try {
       // Simulated redeem for demo
       toast.info('Fonctionnalité à implémenter - Retrait')
@@ -102,8 +102,8 @@ export function RedeemForm({ vaultAddress }: RedeemFormProps) {
               onChange={handleSharesChange}
               disabled={isLoading}
             />
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={handleMaxShares}
               disabled={isLoading}
             >
@@ -114,10 +114,15 @@ export function RedeemForm({ vaultAddress }: RedeemFormProps) {
             Solde disponible: {sharesBalance} parts
           </p>
         </div>
-        
-        <Button 
+
+        <Button
           onClick={handleRedeem}
-          disabled={isLoading || !shares || parseFloat(shares) <= 0 || parseFloat(shares) > parseFloat(sharesBalance)}
+          disabled={
+            isLoading ||
+            !shares ||
+            parseFloat(shares) <= 0 ||
+            parseFloat(shares) > parseFloat(sharesBalance)
+          }
           className="w-full"
         >
           {isLoading ? 'Retrait en cours...' : 'Retirer'}
@@ -126,7 +131,9 @@ export function RedeemForm({ vaultAddress }: RedeemFormProps) {
         {shares && parseFloat(shares) > 0 && (
           <div className="text-sm text-muted-foreground">
             <p>Vous recevrez environ {shares} USDC</p>
-            <p className="text-xs">Prix fictifs (démo) - Frais de sortie appliqués</p>
+            <p className="text-xs">
+              Prix fictifs (démo) - Frais de sortie appliqués
+            </p>
           </div>
         )}
       </CardContent>

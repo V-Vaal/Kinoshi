@@ -1,7 +1,13 @@
 'use client'
 
 import React from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from './ui/card'
 import { Badge } from './ui/badge'
 
 interface VaultInfoProps {
@@ -30,22 +36,30 @@ export function VaultInfo({ strategyId }: VaultInfoProps) {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-sm font-medium text-muted-foreground">Total Assets</p>
+            <p className="text-sm font-medium text-muted-foreground">
+              Total Assets
+            </p>
             <p className="text-2xl font-bold">{totalAssets} USDC</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-muted-foreground">Total Supply</p>
+            <p className="text-sm font-medium text-muted-foreground">
+              Total Supply
+            </p>
             <p className="text-2xl font-bold">{totalSupply} parts</p>
           </div>
         </div>
-        
+
         <div>
-          <p className="text-sm font-medium text-muted-foreground">Prix de la part</p>
+          <p className="text-sm font-medium text-muted-foreground">
+            Prix de la part
+          </p>
           <p className="text-xl font-semibold">{sharePrice.toFixed(6)} USDC</p>
         </div>
 
         <div className="pt-4 border-t">
-          <h4 className="text-sm font-medium mb-2">Allocation de la stratégie</h4>
+          <h4 className="text-sm font-medium mb-2">
+            Allocation de la stratégie
+          </h4>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span>USDC</span>
