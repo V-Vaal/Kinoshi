@@ -111,16 +111,26 @@ describe("Vault.sol – Kinoshi", function () {
       const { user, usdc, vault } = await loadFixture(deployVaultFixture);
       const depositAmount = ethers.parseUnits("1000", 6);
       await (
-        await usdc.connect(user).approve(await vault.getAddress(), depositAmount)
+        await usdc
+          .connect(user)
+          .approve(await vault.getAddress(), depositAmount)
       ).wait();
       await vault
         .connect(user)
         ["deposit(uint256,address,uint256)"](depositAmount, user.address, 1);
 
       const shares = await vault.balanceOf(user.address);
-      await expect(vault.connect(user).redeem(shares, user.address, user.address))
+      await expect(
+        vault.connect(user).redeem(shares, user.address, user.address)
+      )
         .to.emit(vault, "Withdraw")
-        .withArgs(user.address, user.address, user.address, depositAmount, shares);
+        .withArgs(
+          user.address,
+          user.address,
+          user.address,
+          depositAmount,
+          shares
+        );
 
       expect(await vault.balanceOf(user.address)).to.eq(0);
       expect(await usdc.balanceOf(user.address)).to.eq(
@@ -140,7 +150,9 @@ describe("Vault.sol – Kinoshi", function () {
     });
 
     it("bloque les dépôts quand le contrat est en pause", async function () {
-      const { owner, user, vault, usdc } = await loadFixture(deployVaultFixture);
+      const { owner, user, vault, usdc } = await loadFixture(
+        deployVaultFixture
+      );
       await vault.connect(owner).pause();
       const amount = ethers.parseUnits("1000", 6);
       await (
