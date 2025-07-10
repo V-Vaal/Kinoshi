@@ -14,87 +14,80 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         bool active;
     }
 
-    // Mapping des stratégies : id => allocations
-    mapping(uint256 => AssetAllocation[]) public strategyAllocations;
+    // Allocation de la stratégie unique du Vault
+    AssetAllocation[] public allocations;
 
-    // Mapping pour vérifier la whitelist
-    mapping(uint256 => bool) public whitelistedStrategies;
+    // Label de la stratégie pour identification (ex : "Équilibrée", "Agressive")
+    string public strategyLabel;
 
-    // Tableau pour stocker tous les IDs de stratégie
-    uint256[] private strategyIds;
-
-    event DepositWithStrategy(address indexed user, uint256 strategyId, uint256 amount);
+    event Deposited(address indexed user, uint256 amount);
     event WithdrawExecuted(address indexed user, address indexed receiver, uint256 assets);
+    event AllocationsUpdated(address indexed admin);
 
-    // Constructeur : initialisation ERC4626 avec MockUSDC comme asset()
-    constructor(IERC20 asset_)
+    /**
+     * @notice Constructeur du Vault
+     * @param asset_ Token sous-jacent (MockUSDC dans la V1)
+     * @param label Nom de la stratégie associée à ce Vault (ex: "Équilibrée")
+     */
+    constructor(IERC20 asset_, string memory label)
         ERC4626(asset_)
         ERC20("Kinoshi Vault Share", "KNSHVS")
         Ownable(msg.sender)
         Pausable()
         ReentrancyGuard()
-    {}
-
-    /**
-     * @dev Retourne la liste complète des IDs de stratégie actuellement enregistrés
-     * @return Tableau contenant tous les strategyId actuellement whitelistés
-     */
-    function getStrategyIds() external view returns (uint256[] memory) {
-        return strategyIds;
+    {
+        strategyLabel = label;
     }
 
-    // Ajout d'une stratégie (owner only)
-    function setStrategyAllocations(uint256 strategyId, AssetAllocation[] memory allocations) external onlyOwner {
-        delete strategyAllocations[strategyId];
+    /**
+     * @notice Met à jour l'allocation de la stratégie du Vault (owner only)
+     * @param newAllocations Liste des nouveaux actifs pondérés
+     */
+    function setAllocations(AssetAllocation[] memory newAllocations) external onlyOwner {
+        require(newAllocations.length > 0, "Allocations cannot be empty");
+
+        delete allocations;
 
         uint256 totalWeight;
-        for (uint256 i = 0; i < allocations.length; i++) {
-            if (allocations[i].token == address(0)) revert ZeroAddress();
-            strategyAllocations[strategyId].push(allocations[i]);
-            if (allocations[i].active) {
-                totalWeight += allocations[i].weight;
+        for (uint256 i = 0; i < newAllocations.length; i++) {
+            if (newAllocations[i].token == address(0)) revert ZeroAddress();
+            allocations.push(newAllocations[i]);
+            if (newAllocations[i].active) {
+                totalWeight += newAllocations[i].weight;
             }
         }
 
         if (totalWeight != 1e18) revert InvalidWeightSum();
-        
-        // Ajouter l'ID à la liste s'il n'existe pas déjà
-        if (!whitelistedStrategies[strategyId]) {
-            strategyIds.push(strategyId);
-        }
-        whitelistedStrategies[strategyId] = true;
+
+        emit AllocationsUpdated(msg.sender);
     }
 
-    // Suppression d'une stratégie (owner only)
-    function removeStrategy(uint256 strategyId) external onlyOwner {
-        delete strategyAllocations[strategyId];
-        whitelistedStrategies[strategyId] = false;
-        
-        // Retirer l'ID de la liste
-        for (uint256 i = 0; i < strategyIds.length; i++) {
-            if (strategyIds[i] == strategyId) {
-                strategyIds[i] = strategyIds[strategyIds.length - 1];
-                strategyIds.pop();
-                break;
-            }
-        }
+    /**
+     * @notice Retourne l'allocation actuelle
+     */
+    function getAllocations() external view returns (AssetAllocation[] memory) {
+        return allocations;
     }
 
-    // Dépôt avec choix de stratégie
-    function deposit(uint256 assets, address receiver, uint256 strategyId)
+    /**
+     * @notice Dépôt d'USDC avec mint de parts ERC4626
+     */
+    function deposit(uint256 assets, address receiver)
         public
         whenNotPausedCustom
+        override
         returns (uint256)
     {
-        if (!whitelistedStrategies[strategyId]) revert InvalidStrategy();
         if (assets == 0) revert InvalidAmount();
 
         uint256 shares = super.deposit(assets, receiver);
-        emit DepositWithStrategy(receiver, strategyId, assets);
+        emit Deposited(receiver, assets);
         return shares;
     }
 
-    // Retrait classique ERC-4626
+    /**
+     * @notice Retrait par burn de parts (withdraw)
+     */
     function withdraw(uint256 assets, address receiver, address owner)
         public
         whenNotPausedCustom
@@ -109,7 +102,9 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         return shares;
     }
 
-    // Redeem avec protection reentrancy
+    /**
+     * @notice Retrait par échange de parts (redeem)
+     */
     function redeem(uint256 shares, address receiver, address owner)
         public
         whenNotPausedCustom
@@ -121,17 +116,17 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         return super.redeem(shares, receiver, owner);
     }
 
-    // totalAssets : balance du MockUSDC détenu par le Vault
+    /**
+     * @notice Retourne le solde d'USDC détenu dans le Vault
+     */
     function totalAssets() public view override returns (uint256) {
         return IERC20(asset()).balanceOf(address(this));
     }
 
-    // Décalage de décimales pour ERC4626 (MockUSDC 6 décimales, shares 18 décimales)
     function _decimalsOffset() internal view override returns (uint8) {
         return 12;
     }
 
-    // receive et fallback : revert explicite avec custom error
     receive() external payable {
         revert EtherNotAccepted();
     }
@@ -140,13 +135,11 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         revert EtherNotAccepted();
     }
 
-    // Surcharge du modificateur whenNotPaused pour utiliser la custom error
     modifier whenNotPausedCustom() {
         if (paused()) revert Pausable__Paused();
         _;
     }
 
-    // Pause/unpause (owner only)
     function pause() external onlyOwner {
         _pause();
     }
