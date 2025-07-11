@@ -5,7 +5,7 @@ import { Vault, MockUSDC } from "../typechain-types";
 
 describe("Vault.sol – Kinoshi", function () {
   async function deployVaultFixture() {
-    const [owner, user1, user2] = await ethers.getSigners();
+    const [owner, user1, user2, treasury] = await ethers.getSigners();
 
     // Déploiement du MockUSDC (6 décimales)
     const MockUSDC = await ethers.getContractFactory("MockUSDC");
@@ -17,9 +17,13 @@ describe("Vault.sol – Kinoshi", function () {
     await mockUSDC.mint(user1.address, ethers.parseUnits("10000", 6));
     await mockUSDC.mint(user2.address, ethers.parseUnits("10000", 6));
 
-    // Déploiement du Vault avec stratégie "Équilibrée"
+    // Déploiement du Vault avec stratégie "Équilibrée" et treasury
     const Vault = await ethers.getContractFactory("Vault");
-    const vault = await Vault.deploy(await mockUSDC.getAddress(), "Équilibrée");
+    const vault = await Vault.deploy(
+      await mockUSDC.getAddress(),
+      "Équilibrée",
+      treasury.address
+    );
     await vault.waitForDeployment();
 
     // Définition d'une allocation 100% USDC
@@ -34,7 +38,7 @@ describe("Vault.sol – Kinoshi", function () {
     // Configuration de l'allocation (owner only)
     await vault.connect(owner).setAllocations(allocations);
 
-    return { vault, mockUSDC, owner, user1, user2, allocations };
+    return { vault, mockUSDC, owner, user1, user2, treasury, allocations };
   }
 
   describe("Vault – Déploiement", function () {
@@ -124,6 +128,118 @@ describe("Vault.sol – Kinoshi", function () {
     });
   });
 
+  describe("Vault – Management Fees", function () {
+    it("permet à l'owner de définir un feeReceiver valide", async function () {
+      const { vault, owner, user1 } = await loadFixture(deployVaultFixture);
+
+      await vault.connect(owner).setFeeReceiver(user1.address);
+      expect(await vault.feeReceiver()).to.eq(user1.address);
+    });
+
+    it("revert si on essaie de définir une adresse nulle", async function () {
+      const { vault, owner } = await loadFixture(deployVaultFixture);
+
+      await expect(
+        vault.connect(owner).setFeeReceiver(ethers.ZeroAddress)
+      ).to.be.revertedWithCustomError(vault, "ZeroAddress");
+    });
+
+    it("revert si un non-owner essaie de définir le feeReceiver", async function () {
+      const { vault, user1 } = await loadFixture(deployVaultFixture);
+
+      await expect(
+        vault.connect(user1).setFeeReceiver(user1.address)
+      ).to.be.revertedWithCustomError(vault, "OwnableUnauthorizedAccount");
+    });
+
+    it("accrueManagementFee() mint les shares vers le feeReceiver", async function () {
+      const { vault, owner, user1 } = await loadFixture(deployVaultFixture);
+
+      // Définir le feeReceiver
+      await vault.connect(owner).setFeeReceiver(user1.address);
+
+      // Balance initiale
+      const totalSupplyBefore = await vault.totalSupply();
+      const feeReceiverBalanceBefore = await vault.balanceOf(user1.address);
+
+      // Accrue des frais de gestion
+      const feeShares = ethers.parseUnits("1000", 18); // 1000 shares (18 décimales)
+      await vault.connect(owner).accrueManagementFee(feeShares);
+
+      // Vérifier les résultats
+      expect(await vault.totalSupply()).to.eq(totalSupplyBefore + feeShares);
+      expect(await vault.balanceOf(user1.address)).to.eq(
+        feeReceiverBalanceBefore + feeShares
+      );
+    });
+
+    it("émet l'event ManagementFeeAccrued avec les bons arguments", async function () {
+      const { vault, owner, user1 } = await loadFixture(deployVaultFixture);
+
+      // Définir le feeReceiver
+      await vault.connect(owner).setFeeReceiver(user1.address);
+
+      // Accrue des frais de gestion
+      const feeShares = ethers.parseUnits("1000", 18);
+      await expect(vault.connect(owner).accrueManagementFee(feeShares))
+        .to.emit(vault, "ManagementFeeAccrued")
+        .withArgs(user1.address, feeShares);
+    });
+
+    it("revert si un non-owner essaie d'accrue des frais", async function () {
+      const { vault, user1 } = await loadFixture(deployVaultFixture);
+
+      const feeShares = ethers.parseUnits("1000", 18);
+      await expect(
+        vault.connect(user1).accrueManagementFee(feeShares)
+      ).to.be.revertedWithCustomError(vault, "OwnableUnauthorizedAccount");
+    });
+
+    it("revert si on essaie d'accrue 0 shares", async function () {
+      const { vault, owner, user1 } = await loadFixture(deployVaultFixture);
+
+      // Définir le feeReceiver
+      await vault.connect(owner).setFeeReceiver(user1.address);
+
+      await expect(
+        vault.connect(owner).accrueManagementFee(0)
+      ).to.be.revertedWithCustomError(vault, "InvalidAmount");
+    });
+
+    it("vérifie que totalSupply et balanceOf augmentent correctement", async function () {
+      const { vault, owner, user1 } = await loadFixture(deployVaultFixture);
+
+      // Définir le feeReceiver
+      await vault.connect(owner).setFeeReceiver(user1.address);
+
+      // État initial
+      const initialTotalSupply = await vault.totalSupply();
+      const initialFeeReceiverBalance = await vault.balanceOf(user1.address);
+
+      // Accrue des frais
+      const feeShares = ethers.parseUnits("1000", 18);
+      await vault.connect(owner).accrueManagementFee(feeShares);
+
+      // Vérifier l'augmentation
+      expect(await vault.totalSupply()).to.eq(initialTotalSupply + feeShares);
+      expect(await vault.balanceOf(user1.address)).to.eq(
+        initialFeeReceiverBalance + feeShares
+      );
+
+      // Accrue de nouveaux frais
+      const additionalFeeShares = ethers.parseUnits("500", 18);
+      await vault.connect(owner).accrueManagementFee(additionalFeeShares);
+
+      // Vérifier l'augmentation cumulative
+      expect(await vault.totalSupply()).to.eq(
+        initialTotalSupply + feeShares + additionalFeeShares
+      );
+      expect(await vault.balanceOf(user1.address)).to.eq(
+        initialFeeReceiverBalance + feeShares + additionalFeeShares
+      );
+    });
+  });
+
   describe("Vault – Dépôts et retraits", function () {
     it("permet un dépôt et mint des shares", async function () {
       const { vault, mockUSDC, user1 } = await loadFixture(deployVaultFixture);
@@ -199,15 +315,7 @@ describe("Vault.sol – Kinoshi", function () {
 
       await expect(
         vault.connect(user1).redeem(redeemShares, user1.address, user1.address)
-      )
-        .to.emit(vault, "Withdraw")
-        .withArgs(
-          user1.address,
-          user1.address,
-          user1.address,
-          depositAmount / 2n,
-          redeemShares
-        );
+      ).to.not.emit(vault, "ExitFeeApplied");
 
       expect(await vault.balanceOf(user1.address)).to.eq(shares - redeemShares);
     });

@@ -59,10 +59,14 @@ async function main() {
   );
   console.log("✅ Tous les tokens enregistrés dans le registry");
 
-  // 4. Déploiement du Vault
+  // 4. Déploiement du Vault avec les 3 arguments requis
   console.log("\n🏦 Déploiement du Vault...");
   const Vault = await ethers.getContractFactory("Vault");
-  const vault = await Vault.deploy(await mockUSDC.getAddress());
+  const vault = await Vault.deploy(
+    await mockUSDC.getAddress(), // token sous-jacent
+    "Équilibrée", // label de la stratégie
+    deployer.address // treasury (utilise le deployer comme treasury pour les tests)
+  );
   await vault.waitForDeployment();
   console.log("✅ Vault déployé à:", await vault.getAddress());
 
@@ -97,17 +101,33 @@ async function main() {
     },
   ];
 
-  await vault.addStrategy("equilibree", strategyAllocations);
-  console.log("✅ Stratégie 'equilibree' configurée");
+  await vault.setAllocations(strategyAllocations);
+  console.log("✅ Stratégie 'Équilibrée' configurée");
 
-  // 6. Mint de tokens pour le déploiement
+  // 6. Configuration des frais
+  console.log("\n💰 Configuration des frais...");
+
+  // Définir les frais de sortie à 0.5% (50 basis points)
+  await vault.setExitFeeBps(50);
+  console.log("✅ Frais de sortie configurés à 0.5%");
+
+  // Définir le fee receiver (utilise le deployer pour les tests)
+  await vault.setFeeReceiver(deployer.address);
+  console.log("✅ Fee receiver configuré");
+
+  // 7. Mint de tokens pour le déploiement
   console.log("\n💰 Mint de tokens pour le déploiement...");
 
   const mintAmount = parseUnits("1000000", 6); // 1M USDC
   await mockUSDC.mint(deployer.address, mintAmount);
   console.log("✅ 1M MockUSDC mintés pour le déploiement");
 
-  // 7. Affichage des adresses finales
+  // 8. Bootstrap du Vault
+  console.log("\n🚀 Bootstrap du Vault...");
+  await vault.bootstrapVault();
+  console.log("✅ Vault bootstrappé avec 1 USDC");
+
+  // 9. Affichage des adresses finales
   console.log("\n🎯 Adresses des contrats déployés:");
   console.log("MockUSDC:", await mockUSDC.getAddress());
   console.log("MockGold:", await mockGold.getAddress());
