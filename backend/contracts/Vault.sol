@@ -20,6 +20,9 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     // Label de la stratégie pour identification (ex : "Équilibrée", "Agressive")
     string public strategyLabel;
 
+    // Adresse du treasury pour le bootstrap
+    address public immutable treasury;
+
     event Deposited(address indexed user, uint256 amount);
     event WithdrawExecuted(address indexed user, address indexed receiver, uint256 assets);
     event AllocationsUpdated(address indexed admin);
@@ -28,8 +31,9 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
      * @notice Constructeur du Vault
      * @param asset_ Token sous-jacent (MockUSDC dans la V1)
      * @param label Nom de la stratégie associée à ce Vault (ex: "Équilibrée")
+     * @param treasury_ Adresse du treasury pour le bootstrap
      */
-    constructor(IERC20 asset_, string memory label)
+    constructor(IERC20 asset_, string memory label, address treasury_)
         ERC4626(asset_)
         ERC20("Kinoshi Vault Share", "KNSHVS")
         Ownable(msg.sender)
@@ -37,6 +41,7 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         ReentrancyGuard()
     {
         strategyLabel = label;
+        treasury = treasury_;
     }
 
     /**
@@ -67,6 +72,15 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
      */
     function getAllocations() external view returns (AssetAllocation[] memory) {
         return allocations;
+    }
+
+    /**
+     * @notice Bootstrap le Vault avec 1 USDC vers le treasury (owner only, une seule fois)
+     * @dev Évite les dépôts à taux arbitraire quand totalSupply == 0
+     */
+    function bootstrapVault() external onlyOwner {
+        require(totalSupply() == 0, "Vault already bootstrapped");
+        deposit(1e6, treasury); // 1 USDC (6 décimales)
     }
 
     /**
