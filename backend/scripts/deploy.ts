@@ -2,7 +2,7 @@ import { ethers } from "hardhat";
 import { parseUnits } from "ethers";
 
 async function main() {
-  const [deployer] = await ethers.getSigners();
+  const [deployer, treasury] = await ethers.getSigners();
   console.log("🚀 Déploiement Kinoshi avec le compte:", deployer.address);
   console.log(
     "💰 Balance:",
@@ -59,15 +59,20 @@ async function main() {
   );
   console.log("✅ Tous les tokens enregistrés dans le registry");
 
-  // 4. Déploiement du Vault
-  console.log("\n🏦 Déploiement du Vault...");
+  // 4. Déploiement du Vault mono-stratégie
+  console.log("\n🏦 Déploiement du Vault mono-stratégie...");
   const Vault = await ethers.getContractFactory("Vault");
-  const vault = await Vault.deploy(await mockUSDC.getAddress());
+  const vault = await Vault.deploy(
+    await mockUSDC.getAddress(),
+    "Équilibrée",
+    treasury.address
+  );
   await vault.waitForDeployment();
   console.log("✅ Vault déployé à:", await vault.getAddress());
+  console.log("   Treasury:", treasury.address);
 
   // 5. Configuration de la stratégie équilibrée
-  console.log("\n⚖️ Configuration de la stratégie équilibrée...");
+  console.log("\n⚖️ Configuration de la stratégie 'Équilibrée'...");
 
   const strategyAllocations = [
     {
@@ -97,8 +102,8 @@ async function main() {
     },
   ];
 
-  await vault.addStrategy("equilibree", strategyAllocations);
-  console.log("✅ Stratégie 'equilibree' configurée");
+  await vault.setAllocations(strategyAllocations);
+  console.log("✅ Stratégie 'Équilibrée' configurée");
 
   // 6. Mint de tokens pour le déploiement
   console.log("\n💰 Mint de tokens pour le déploiement...");
@@ -116,6 +121,7 @@ async function main() {
   console.log("MockEquity:", await mockEquity.getAddress());
   console.log("TokenRegistry:", await tokenRegistry.getAddress());
   console.log("Vault:", await vault.getAddress());
+  console.log("Treasury:", treasury.address);
 
   console.log("\n✨ Déploiement terminé avec succès!");
   console.log(
