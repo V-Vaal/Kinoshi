@@ -5,7 +5,7 @@ import { Vault, MockUSDC } from "../typechain-types";
 
 describe("Vault.sol – Kinoshi", function () {
   async function deployVaultFixture() {
-    const [owner, user1, user2] = await ethers.getSigners();
+    const [owner, user1, user2, treasury] = await ethers.getSigners();
 
     // Déploiement du MockUSDC (6 décimales)
     const MockUSDC = await ethers.getContractFactory("MockUSDC");
@@ -17,9 +17,13 @@ describe("Vault.sol – Kinoshi", function () {
     await mockUSDC.mint(user1.address, ethers.parseUnits("10000", 6));
     await mockUSDC.mint(user2.address, ethers.parseUnits("10000", 6));
 
-    // Déploiement du Vault avec stratégie "Équilibrée"
+    // Déploiement du Vault avec stratégie "Équilibrée" et treasury
     const Vault = await ethers.getContractFactory("Vault");
-    const vault = await Vault.deploy(await mockUSDC.getAddress(), "Équilibrée");
+    const vault = await Vault.deploy(
+      await mockUSDC.getAddress(),
+      "Équilibrée",
+      treasury.address
+    );
     await vault.waitForDeployment();
 
     // Définition d'une allocation 100% USDC
@@ -34,7 +38,7 @@ describe("Vault.sol – Kinoshi", function () {
     // Configuration de l'allocation (owner only)
     await vault.connect(owner).setAllocations(allocations);
 
-    return { vault, mockUSDC, owner, user1, user2, allocations };
+    return { vault, mockUSDC, owner, user1, user2, treasury, allocations };
   }
 
   describe("Vault – Déploiement", function () {
@@ -121,6 +125,75 @@ describe("Vault.sol – Kinoshi", function () {
       expect(allocations[0].token).to.eq(await mockUSDC.getAddress());
       expect(allocations[0].weight).to.eq(ethers.parseUnits("1", 18));
       expect(allocations[0].active).to.eq(true);
+    });
+  });
+
+  describe("Vault – Bootstrap", function () {
+    it("permet le bootstrap du Vault par l'owner", async function () {
+      const { vault, mockUSDC, owner, treasury } = await loadFixture(
+        deployVaultFixture
+      );
+
+      // Vérifier l'état initial
+      expect(await vault.totalSupply()).to.eq(0);
+      expect(await vault.balanceOf(treasury.address)).to.eq(0);
+
+      // Mint USDC à l'owner pour le bootstrap
+      const bootstrapAmount = ethers.parseUnits("1", 6); // 1 USDC
+      await mockUSDC.mint(owner.address, bootstrapAmount);
+      await mockUSDC
+        .connect(owner)
+        .approve(await vault.getAddress(), bootstrapAmount);
+
+      // Exécuter le bootstrap
+      await expect(vault.connect(owner).bootstrapVault())
+        .to.emit(vault, "Deposited")
+        .withArgs(treasury.address, bootstrapAmount);
+
+      // Vérifier les résultats
+      expect(await vault.totalSupply()).to.gt(0);
+      expect(await vault.balanceOf(treasury.address)).to.eq(
+        bootstrapAmount * 10n ** 12n
+      ); // 6→18 décimales
+      expect(await vault.totalAssets()).to.eq(bootstrapAmount);
+    });
+
+    it("revert si un non-owner essaie de bootstrapper", async function () {
+      const { vault, user1 } = await loadFixture(deployVaultFixture);
+
+      await expect(
+        vault.connect(user1).bootstrapVault()
+      ).to.be.revertedWithCustomError(vault, "OwnableUnauthorizedAccount");
+    });
+
+    it("revert si on essaie de bootstrapper une seconde fois", async function () {
+      const { vault, mockUSDC, owner, treasury } = await loadFixture(
+        deployVaultFixture
+      );
+
+      // Premier bootstrap
+      const bootstrapAmount = ethers.parseUnits("1", 6);
+      await mockUSDC.mint(owner.address, bootstrapAmount);
+      await mockUSDC
+        .connect(owner)
+        .approve(await vault.getAddress(), bootstrapAmount);
+      await vault.connect(owner).bootstrapVault();
+
+      // Deuxième bootstrap (doit échouer)
+      await mockUSDC.mint(owner.address, bootstrapAmount);
+      await mockUSDC
+        .connect(owner)
+        .approve(await vault.getAddress(), bootstrapAmount);
+
+      await expect(vault.connect(owner).bootstrapVault()).to.be.revertedWith(
+        "Vault already bootstrapped"
+      );
+    });
+
+    it("vérifie que le treasury est correctement configuré", async function () {
+      const { vault, treasury } = await loadFixture(deployVaultFixture);
+
+      expect(await vault.treasury()).to.eq(treasury.address);
     });
   });
 

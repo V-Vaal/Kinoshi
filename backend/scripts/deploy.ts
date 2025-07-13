@@ -52,17 +52,17 @@ async function main() {
   await tokenRegistry.registerToken(await mockGold.getAddress(), "mGOLD", 18);
   await tokenRegistry.registerToken(await mockBTC.getAddress(), "mBTC", 8);
   await tokenRegistry.registerToken(await mockBonds.getAddress(), "mBONDS", 18);
-  await tokenRegistry.registerToken(
-    await mockEquity.getAddress(),
-    "mEQUITY",
-    18
-  );
+  await tokenRegistry.registerToken(await mockEquity.getAddress(), "mEQUITY", 18);
   console.log("✅ Tous les tokens enregistrés dans le registry");
 
-  // 4. Déploiement du Vault
+  // 4. Déploiement du Vault avec treasury
   console.log("\n🏦 Déploiement du Vault...");
   const Vault = await ethers.getContractFactory("Vault");
-  const vault = await Vault.deploy(await mockUSDC.getAddress());
+  const vault = await Vault.deploy(
+    await mockUSDC.getAddress(),
+    "Équilibrée",
+    deployer.address // Treasury = deployer ici
+  );
   await vault.waitForDeployment();
   console.log("✅ Vault déployé à:", await vault.getAddress());
 
@@ -97,17 +97,25 @@ async function main() {
     },
   ];
 
-  await vault.addStrategy("equilibree", strategyAllocations);
-  console.log("✅ Stratégie 'equilibree' configurée");
+  await vault.setAllocations(strategyAllocations);
+  console.log("✅ Stratégie 'Équilibrée' configurée");
 
-  // 6. Mint de tokens pour le déploiement
+  // 6. Bootstrap du Vault (1 USDC vers treasury)
+  console.log("\n🛠️ Bootstrap du Vault...");
+
+  const bootstrapAmount = parseUnits("1", 6); // 1 USDC
+  await mockUSDC.approve(await vault.getAddress(), bootstrapAmount);
+  await vault.bootstrapVault();
+  console.log("✅ Vault bootstrappé avec 1 USDC vers treasury");
+
+  // 7. Mint de tokens pour le déploiement
   console.log("\n💰 Mint de tokens pour le déploiement...");
 
   const mintAmount = parseUnits("1000000", 6); // 1M USDC
   await mockUSDC.mint(deployer.address, mintAmount);
   console.log("✅ 1M MockUSDC mintés pour le déploiement");
 
-  // 7. Affichage des adresses finales
+  // 8. Affichage des adresses finales
   console.log("\n🎯 Adresses des contrats déployés:");
   console.log("MockUSDC:", await mockUSDC.getAddress());
   console.log("MockGold:", await mockGold.getAddress());
