@@ -2,7 +2,7 @@ import { ethers } from "hardhat";
 import { parseUnits } from "ethers";
 
 async function main() {
-  const [deployer] = await ethers.getSigners();
+  const [deployer, treasury] = await ethers.getSigners();
   console.log("🚀 Déploiement Kinoshi avec le compte:", deployer.address);
   console.log(
     "💰 Balance:",
@@ -55,44 +55,45 @@ async function main() {
   await tokenRegistry.registerToken(await mockEquity.getAddress(), "mEQUITY", 18);
   console.log("✅ Tous les tokens enregistrés dans le registry");
 
-  // 4. Déploiement du Vault avec treasury
-  console.log("\n🏦 Déploiement du Vault...");
+  // 4. Déploiement du Vault mono-stratégie avec frais
+  console.log("\n🏦 Déploiement du Vault mono-stratégie...");
   const Vault = await ethers.getContractFactory("Vault");
   const vault = await Vault.deploy(
     await mockUSDC.getAddress(),
     "Équilibrée",
-    deployer.address // Treasury = deployer ici
+    treasury.address
   );
   await vault.waitForDeployment();
   console.log("✅ Vault déployé à:", await vault.getAddress());
+  console.log("   Treasury:", treasury.address);
 
   // 5. Configuration de la stratégie équilibrée
-  console.log("\n⚖️ Configuration de la stratégie équilibrée...");
+  console.log("\n⚖️ Configuration de la stratégie 'Équilibrée'...");
 
   const strategyAllocations = [
     {
       token: await mockUSDC.getAddress(),
-      weight: parseUnits("0.25", 18), // 25%
+      weight: parseUnits("0.25", 18),
       active: true,
     },
     {
       token: await mockGold.getAddress(),
-      weight: parseUnits("0.25", 18), // 25%
+      weight: parseUnits("0.25", 18),
       active: true,
     },
     {
       token: await mockBTC.getAddress(),
-      weight: parseUnits("0.25", 18), // 25%
+      weight: parseUnits("0.25", 18),
       active: true,
     },
     {
       token: await mockBonds.getAddress(),
-      weight: parseUnits("0.15", 18), // 15%
+      weight: parseUnits("0.15", 18),
       active: true,
     },
     {
       token: await mockEquity.getAddress(),
-      weight: parseUnits("0.10", 18), // 10%
+      weight: parseUnits("0.10", 18),
       active: true,
     },
   ];
@@ -124,6 +125,7 @@ async function main() {
   console.log("MockEquity:", await mockEquity.getAddress());
   console.log("TokenRegistry:", await tokenRegistry.getAddress());
   console.log("Vault:", await vault.getAddress());
+  console.log("Treasury:", treasury.address);
 
   console.log("\n✨ Déploiement terminé avec succès!");
   console.log(

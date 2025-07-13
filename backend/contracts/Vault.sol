@@ -20,18 +20,23 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     // Label de la stratégie pour identification (ex : "Équilibrée", "Agressive")
     string public strategyLabel;
 
-    // Adresse du treasury pour le bootstrap
+    // Frais de sortie en basis points (1 BPS = 0.01%)
+    uint256 public constant MAX_FEE_BPS = 1000; // 10%
+    uint256 public exitFeeBps;
+
+    // Adresse du treasury pour le bootstrap et les frais
     address public immutable treasury;
 
     event Deposited(address indexed user, uint256 amount);
     event WithdrawExecuted(address indexed user, address indexed receiver, uint256 assets);
     event AllocationsUpdated(address indexed admin);
+    event ExitFeeApplied(address indexed user, uint256 assets, uint256 fee);
 
     /**
      * @notice Constructeur du Vault
      * @param asset_ Token sous-jacent (MockUSDC dans la V1)
      * @param label Nom de la stratégie associée à ce Vault (ex: "Équilibrée")
-     * @param treasury_ Adresse du treasury pour le bootstrap
+     * @param treasury_ Adresse du treasury pour le bootstrap et les frais
      */
     constructor(IERC20 asset_, string memory label, address treasury_)
         ERC4626(asset_)
@@ -72,6 +77,15 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
      */
     function getAllocations() external view returns (AssetAllocation[] memory) {
         return allocations;
+    }
+
+    /**
+     * @notice Met à jour les frais de sortie (owner only)
+     * @param newFeeBps Nouveaux frais en basis points (max 1000 = 10%)
+     */
+    function setExitFeeBps(uint256 newFeeBps) external onlyOwner {
+        require(newFeeBps <= MAX_FEE_BPS, "Fee exceeds maximum");
+        exitFeeBps = newFeeBps;
     }
 
     /**
@@ -117,7 +131,7 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Retrait par échange de parts (redeem)
+     * @notice Retrait par échange de parts (redeem) avec frais de sortie
      */
     function redeem(uint256 shares, address receiver, address owner)
         public
@@ -127,7 +141,27 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         returns (uint256)
     {
         if (shares == 0) revert InvalidAmount();
-        return super.redeem(shares, receiver, owner);
+        
+        // Calculer les assets avant les frais
+        uint256 assets = super.convertToAssets(shares);
+        
+        // Calculer les frais
+        uint256 fee = (assets * exitFeeBps) / 10_000;
+        uint256 assetsAfterFee = assets - fee;
+        
+        // Burn les parts via super.redeem()
+        super.redeem(shares, address(this), owner);
+        
+        // Transférer les assets après frais au receiver
+        IERC20(asset()).transfer(receiver, assetsAfterFee);
+        
+        // Transférer les frais au treasury
+        if (fee > 0) {
+            IERC20(asset()).transfer(treasury, fee);
+            emit ExitFeeApplied(owner, assets, fee);
+        }
+        
+        return assetsAfterFee;
     }
 
     /**
