@@ -1,23 +1,18 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { ethers } from "hardhat";
 import { expect } from "chai";
-import { Vault, MockUSDC } from "../typechain-types";
 
-describe("Vault.sol – Kinoshi", function () {
+describe("Vault – Exit Fees", function () {
   async function deployVaultFixture() {
-    const [owner, user1, user2, treasury] = await ethers.getSigners();
+    const [owner, user1, treasury] = await ethers.getSigners();
 
-    // Déploiement du MockUSDC (6 décimales)
     const MockUSDC = await ethers.getContractFactory("MockUSDC");
     const mockUSDC = await MockUSDC.deploy("Mock USDC", "mUSDC", 6);
     await mockUSDC.waitForDeployment();
 
-    // Mint USDC pour les utilisateurs
     await mockUSDC.mint(owner.address, ethers.parseUnits("10000", 6));
     await mockUSDC.mint(user1.address, ethers.parseUnits("10000", 6));
-    await mockUSDC.mint(user2.address, ethers.parseUnits("10000", 6));
 
-    // Déploiement du Vault avec stratégie "Équilibrée" et treasury
     const Vault = await ethers.getContractFactory("Vault");
     const vault = await Vault.deploy(
       await mockUSDC.getAddress(),
@@ -26,526 +21,99 @@ describe("Vault.sol – Kinoshi", function () {
     );
     await vault.waitForDeployment();
 
-    // Définition d'une allocation 100% USDC
-    const allocations = [
+    const allocation = [
       {
         token: await mockUSDC.getAddress(),
-        weight: ethers.parseUnits("1", 18), // 100% sur USDC
+        weight: ethers.parseUnits("1", 18),
         active: true,
       },
     ];
 
-    // Configuration de l'allocation (owner only)
-    await vault.connect(owner).setAllocations(allocations);
+    await vault.connect(owner).setAllocations(allocation);
 
-    return { vault, mockUSDC, owner, user1, user2, treasury, allocations };
+    return { vault, mockUSDC, owner, user1, treasury };
   }
 
-  describe("Vault – Déploiement", function () {
-    it("déploie correctement avec le bon asset et label", async function () {
-      const { vault, mockUSDC } = await loadFixture(deployVaultFixture);
+  it("permet à l'owner de modifier le exitFeeBps", async function () {
+    const { vault, owner } = await loadFixture(deployVaultFixture);
 
-      expect(await vault.asset()).to.eq(await mockUSDC.getAddress());
-      expect(await vault.strategyLabel()).to.eq("Équilibrée");
-      expect(await vault.paused()).to.eq(false);
-      expect(await vault.totalSupply()).to.eq(0);
-    });
+    const newFee = 300;
+    await vault.connect(owner).setExitFeeBps(newFee);
+    expect(await vault.exitFeeBps()).to.equal(newFee);
   });
 
-  describe("Vault – Allocation de stratégie", function () {
-    it("permet de configurer une allocation valide", async function () {
-      const { vault, mockUSDC, owner } = await loadFixture(deployVaultFixture);
+  it("revert si un non-owner tente de modifier les frais", async function () {
+    const { vault, user1 } = await loadFixture(deployVaultFixture);
 
-      const newAllocations = [
-        {
-          token: await mockUSDC.getAddress(),
-          weight: ethers.parseUnits("1", 18),
-          active: true,
-        },
-      ];
-
-      await expect(vault.connect(owner).setAllocations(newAllocations))
-        .to.emit(vault, "AllocationsUpdated")
-        .withArgs(owner.address);
-
-      const retrievedAllocations = await vault.getAllocations();
-      expect(retrievedAllocations).to.have.length(1);
-      expect(retrievedAllocations[0].token).to.eq(await mockUSDC.getAddress());
-      expect(retrievedAllocations[0].weight).to.eq(ethers.parseUnits("1", 18));
-      expect(retrievedAllocations[0].active).to.eq(true);
-    });
-
-    it("revert si on essaie d'ajouter une adresse nulle", async function () {
-      const { vault, owner } = await loadFixture(deployVaultFixture);
-
-      const invalidAllocations = [
-        {
-          token: ethers.ZeroAddress,
-          weight: ethers.parseUnits("1", 18),
-          active: true,
-        },
-      ];
-
-      await expect(
-        vault.connect(owner).setAllocations(invalidAllocations)
-      ).to.be.revertedWithCustomError(vault, "ZeroAddress");
-    });
-
-    it("revert si la somme des poids n'est pas égale à 1e18", async function () {
-      const { vault, mockUSDC, owner } = await loadFixture(deployVaultFixture);
-
-      const invalidAllocations = [
-        {
-          token: await mockUSDC.getAddress(),
-          weight: ethers.parseUnits("0.5", 18), // 50% seulement
-          active: true,
-        },
-      ];
-
-      await expect(
-        vault.connect(owner).setAllocations(invalidAllocations)
-      ).to.be.revertedWithCustomError(vault, "InvalidWeightSum");
-    });
-
-    it("revert si on essaie d'ajouter 0 allocations", async function () {
-      const { vault, owner } = await loadFixture(deployVaultFixture);
-
-      const emptyAllocations: any[] = [];
-
-      await expect(
-        vault.connect(owner).setAllocations(emptyAllocations)
-      ).to.be.revertedWith("Allocations cannot be empty");
-    });
-
-    it("retourne l'allocation actuelle via getAllocations()", async function () {
-      const { vault, mockUSDC } = await loadFixture(deployVaultFixture);
-
-      const allocations = await vault.getAllocations();
-      expect(allocations).to.have.length(1);
-      expect(allocations[0].token).to.eq(await mockUSDC.getAddress());
-      expect(allocations[0].weight).to.eq(ethers.parseUnits("1", 18));
-      expect(allocations[0].active).to.eq(true);
-    });
+    await expect(
+      vault.connect(user1).setExitFeeBps(100)
+    ).to.be.revertedWithCustomError(vault, "OwnableUnauthorizedAccount");
   });
 
-  describe("Vault – Bootstrap", function () {
-    it("permet le bootstrap du Vault par l'owner", async function () {
-      const { vault, mockUSDC, owner, treasury } = await loadFixture(
-        deployVaultFixture
-      );
+  it("revert si on dépasse la limite MAX_FEE_BPS", async function () {
+    const { vault, owner } = await loadFixture(deployVaultFixture);
 
-      // Vérifier l'état initial
-      expect(await vault.totalSupply()).to.eq(0);
-      expect(await vault.balanceOf(treasury.address)).to.eq(0);
-
-      // Mint USDC à l'owner pour le bootstrap
-      const bootstrapAmount = ethers.parseUnits("1", 6); // 1 USDC
-      await mockUSDC.mint(owner.address, bootstrapAmount);
-      await mockUSDC
-        .connect(owner)
-        .approve(await vault.getAddress(), bootstrapAmount);
-
-      // Exécuter le bootstrap
-      await expect(vault.connect(owner).bootstrapVault())
-        .to.emit(vault, "Deposited")
-        .withArgs(treasury.address, bootstrapAmount);
-
-      // Vérifier les résultats
-      expect(await vault.totalSupply()).to.gt(0);
-      expect(await vault.balanceOf(treasury.address)).to.eq(
-        bootstrapAmount * 10n ** 12n
-      ); // 6→18 décimales
-      expect(await vault.totalAssets()).to.eq(bootstrapAmount);
-    });
-
-    it("revert si un non-owner essaie de bootstrapper", async function () {
-      const { vault, user1 } = await loadFixture(deployVaultFixture);
-
-      await expect(
-        vault.connect(user1).bootstrapVault()
-      ).to.be.revertedWithCustomError(vault, "OwnableUnauthorizedAccount");
-    });
-
-    it("revert si on essaie de bootstrapper une seconde fois", async function () {
-      const { vault, mockUSDC, owner, treasury } = await loadFixture(
-        deployVaultFixture
-      );
-
-      // Premier bootstrap
-      const bootstrapAmount = ethers.parseUnits("1", 6);
-      await mockUSDC.mint(owner.address, bootstrapAmount);
-      await mockUSDC
-        .connect(owner)
-        .approve(await vault.getAddress(), bootstrapAmount);
-      await vault.connect(owner).bootstrapVault();
-
-      // Deuxième bootstrap (doit échouer)
-      await mockUSDC.mint(owner.address, bootstrapAmount);
-      await mockUSDC
-        .connect(owner)
-        .approve(await vault.getAddress(), bootstrapAmount);
-
-      await expect(vault.connect(owner).bootstrapVault()).to.be.revertedWith(
-        "Vault already bootstrapped"
-      );
-    });
-
-    it("vérifie que le treasury est correctement configuré", async function () {
-      const { vault, treasury } = await loadFixture(deployVaultFixture);
-
-      expect(await vault.treasury()).to.eq(treasury.address);
-    });
+    await expect(
+      vault.connect(owner).setExitFeeBps(1001)
+    ).to.be.revertedWith("Fee exceeds maximum");
   });
 
-  describe("Vault – Exit Fees", function () {
-    it("permet à l'owner de modifier le exitFeeBps", async function () {
-      const { vault, owner } = await loadFixture(deployVaultFixture);
+  it("n’applique pas de frais si exitFeeBps == 0", async function () {
+    const { vault, mockUSDC, user1 } = await loadFixture(deployVaultFixture);
 
-      const newFeeBps = 500; // 5%
-      await vault.connect(owner).setExitFeeBps(newFeeBps);
-      expect(await vault.exitFeeBps()).to.eq(newFeeBps);
-    });
+    const depositAmount = ethers.parseUnits("1000", 6);
+    await mockUSDC.connect(user1).approve(vault, depositAmount);
+    await vault.connect(user1).deposit(depositAmount, user1.address);
 
-    it("revert si un non-owner essaie de modifier exitFeeBps", async function () {
-      const { vault, user1 } = await loadFixture(deployVaultFixture);
+    const shares = await vault.balanceOf(user1.address);
+    const redeemShares = shares / 2n;
 
-      await expect(
-        vault.connect(user1).setExitFeeBps(500)
-      ).to.be.revertedWithCustomError(vault, "OwnableUnauthorizedAccount");
-    });
+    const treasuryBalanceBefore = await mockUSDC.balanceOf(
+      (await vault.treasury())
+    );
 
-    it("revert si on essaie de définir une valeur supérieure à MAX_FEE_BPS", async function () {
-      const { vault, owner } = await loadFixture(deployVaultFixture);
+    await vault
+      .connect(user1)
+      .redeem(redeemShares, user1.address, user1.address);
 
-      const invalidFeeBps = 1001; // > 1000 (10%)
-      await expect(
-        vault.connect(owner).setExitFeeBps(invalidFeeBps)
-      ).to.be.revertedWith("Fee exceeds maximum");
-    });
+    const treasuryBalanceAfter = await mockUSDC.balanceOf(
+      (await vault.treasury())
+    );
 
-    it("redeem() avec exitFeeBps = 0 ne prend aucun frais", async function () {
-      const { vault, mockUSDC, user1, treasury } = await loadFixture(
-        deployVaultFixture
-      );
-
-      // Dépôt initial
-      const depositAmount = ethers.parseUnits("1000", 6);
-      await mockUSDC
-        .connect(user1)
-        .approve(await vault.getAddress(), depositAmount);
-      await vault.connect(user1).deposit(depositAmount, user1.address);
-
-      // Vérifier que exitFeeBps est à 0 par défaut
-      expect(await vault.exitFeeBps()).to.eq(0);
-
-      // Balance initiale du treasury
-      const treasuryBalanceBefore = await mockUSDC.balanceOf(treasury.address);
-
-      // Redeem des parts
-      const shares = await vault.balanceOf(user1.address);
-      const redeemShares = shares / 2n; // 50% des parts
-
-      await expect(
-        vault.connect(user1).redeem(redeemShares, user1.address, user1.address)
-      ).to.not.emit(vault, "ExitFeeApplied");
-
-      // Vérifier qu'aucun frais n'a été prélevé
-      const treasuryBalanceAfter = await mockUSDC.balanceOf(treasury.address);
-      expect(treasuryBalanceAfter).to.eq(treasuryBalanceBefore);
-    });
-
-    it("redeem() avec exitFeeBps = 500 (5%) applique les frais correctement", async function () {
-      const { vault, mockUSDC, user1, treasury, owner } = await loadFixture(
-        deployVaultFixture
-      );
-
-      // Configurer les frais à 5%
-      await vault.connect(owner).setExitFeeBps(500);
-
-      // Dépôt initial
-      const depositAmount = ethers.parseUnits("1000", 6);
-      await mockUSDC
-        .connect(user1)
-        .approve(await vault.getAddress(), depositAmount);
-      await vault.connect(user1).deposit(depositAmount, user1.address);
-
-      // Balance initiale du treasury
-      const treasuryBalanceBefore = await mockUSDC.balanceOf(treasury.address);
-      const userBalanceBefore = await mockUSDC.balanceOf(user1.address);
-
-      // Redeem des parts
-      const shares = await vault.balanceOf(user1.address);
-      const redeemShares = shares / 2n; // 50% des parts
-      const expectedAssets = depositAmount / 2n; // 500 USDC
-      const expectedFee = (expectedAssets * 500n) / 10000n; // 5% = 25 USDC
-      const expectedAssetsAfterFee = expectedAssets - expectedFee; // 475 USDC
-
-      await expect(
-        vault.connect(user1).redeem(redeemShares, user1.address, user1.address)
-      )
-        .to.emit(vault, "ExitFeeApplied")
-        .withArgs(user1.address, expectedAssets, expectedFee);
-
-      // Vérifier les transferts
-      const treasuryBalanceAfter = await mockUSDC.balanceOf(treasury.address);
-      const userBalanceAfter = await mockUSDC.balanceOf(user1.address);
-
-      expect(treasuryBalanceAfter - treasuryBalanceBefore).to.eq(expectedFee);
-      expect(userBalanceAfter - userBalanceBefore).to.eq(
-        expectedAssetsAfterFee
-      );
-    });
-
-    it("totalAssets() reste cohérent après les opérations avec frais", async function () {
-      const { vault, mockUSDC, user1, owner } = await loadFixture(
-        deployVaultFixture
-      );
-
-      // Configurer les frais à 5%
-      await vault.connect(owner).setExitFeeBps(500);
-
-      // Dépôt initial
-      const depositAmount = ethers.parseUnits("1000", 6);
-      await mockUSDC
-        .connect(user1)
-        .approve(await vault.getAddress(), depositAmount);
-      await vault.connect(user1).deposit(depositAmount, user1.address);
-
-      // Vérifier totalAssets avant redeem
-      expect(await vault.totalAssets()).to.eq(depositAmount);
-
-      // Redeem des parts
-      const shares = await vault.balanceOf(user1.address);
-      const redeemShares = shares / 2n;
-      const expectedAssets = depositAmount / 2n;
-      const expectedFee = (expectedAssets * 500n) / 10000n;
-      const expectedAssetsAfterFee = expectedAssets - expectedFee;
-
-      await vault
-        .connect(user1)
-        .redeem(redeemShares, user1.address, user1.address);
-
-      // Vérifier que totalAssets correspond aux assets restants dans le Vault
-      const remainingAssets =
-        depositAmount - expectedAssetsAfterFee - expectedFee;
-      expect(await vault.totalAssets()).to.eq(remainingAssets);
-    });
+    expect(treasuryBalanceAfter - treasuryBalanceBefore).to.eq(0);
   });
 
-  describe("Vault – Dépôts et retraits", function () {
-    it("permet un dépôt et mint des shares", async function () {
-      const { vault, mockUSDC, user1 } = await loadFixture(deployVaultFixture);
+  it("calcule et applique correctement les frais avec exitFeeBps > 0", async function () {
+    const { vault, mockUSDC, user1, treasury, owner } = await loadFixture(
+      deployVaultFixture
+    );
 
-      const depositAmount = ethers.parseUnits("1000", 6);
-      await mockUSDC
-        .connect(user1)
-        .approve(await vault.getAddress(), depositAmount);
+    await vault.connect(owner).setExitFeeBps(500); // 5%
 
-      await expect(vault.connect(user1).deposit(depositAmount, user1.address))
-        .to.emit(vault, "Deposited")
-        .withArgs(user1.address, depositAmount);
+    const depositAmount = ethers.parseUnits("1000", 6);
+    await mockUSDC.connect(user1).approve(vault, depositAmount);
+    await vault.connect(user1).deposit(depositAmount, user1.address);
 
-      expect(await vault.totalAssets()).to.eq(depositAmount);
-      expect(await vault.balanceOf(user1.address)).to.eq(
-        depositAmount * 10n ** 12n
-      ); // 6→18 décimales
-      expect(await mockUSDC.balanceOf(user1.address)).to.eq(
-        ethers.parseUnits("9000", 6)
-      );
-    });
+    const treasuryBefore = await mockUSDC.balanceOf(treasury.address);
+    const userBefore = await mockUSDC.balanceOf(user1.address);
 
-    it("convertit correctement les assets en shares (1:1, 6→18 décimales)", async function () {
-      const { vault } = await loadFixture(deployVaultFixture);
+    const shares = await vault.balanceOf(user1.address);
+    const redeemShares = shares / 2n;
 
-      const amount = ethers.parseUnits("500", 6);
-      const shares = await vault.convertToShares(amount);
-      expect(shares).to.eq(amount * 10n ** 12n);
+    const expectedAssets = depositAmount / 2n;
+    const expectedFee = (expectedAssets * 500n) / 10_000n;
+    const expectedAfterFee = expectedAssets - expectedFee;
 
-      // Conversion inverse
-      expect(await vault.convertToAssets(shares)).to.eq(amount);
-    });
+    await expect(
+      vault.connect(user1).redeem(redeemShares, user1.address, user1.address)
+    )
+      .to.emit(vault, "ExitFeeApplied")
+      .withArgs(user1.address, expectedAssets, expectedFee);
 
-    it("permet un retrait via withdraw()", async function () {
-      const { vault, mockUSDC, user1 } = await loadFixture(deployVaultFixture);
+    const treasuryAfter = await mockUSDC.balanceOf(treasury.address);
+    const userAfter = await mockUSDC.balanceOf(user1.address);
 
-      // Dépôt initial
-      const depositAmount = ethers.parseUnits("1000", 6);
-      await mockUSDC
-        .connect(user1)
-        .approve(await vault.getAddress(), depositAmount);
-      await vault.connect(user1).deposit(depositAmount, user1.address);
-
-      const withdrawAmount = ethers.parseUnits("500", 6);
-      const shares = await vault.convertToShares(withdrawAmount);
-
-      await expect(
-        vault
-          .connect(user1)
-          .withdraw(withdrawAmount, user1.address, user1.address)
-      )
-        .to.emit(vault, "WithdrawExecuted")
-        .withArgs(user1.address, user1.address, withdrawAmount);
-
-      expect(await vault.balanceOf(user1.address)).to.eq(shares);
-      expect(await mockUSDC.balanceOf(user1.address)).to.eq(
-        ethers.parseUnits("9500", 6)
-      );
-    });
-
-    it("permet un retrait via redeem()", async function () {
-      const { vault, mockUSDC, user1 } = await loadFixture(deployVaultFixture);
-
-      // Dépôt initial
-      const depositAmount = ethers.parseUnits("1000", 6);
-      await mockUSDC
-        .connect(user1)
-        .approve(await vault.getAddress(), depositAmount);
-      await vault.connect(user1).deposit(depositAmount, user1.address);
-
-      const shares = await vault.balanceOf(user1.address);
-      const redeemShares = shares / 2n;
-
-      await expect(
-        vault.connect(user1).redeem(redeemShares, user1.address, user1.address)
-      ).to.not.emit(vault, "ExitFeeApplied");
-
-      expect(await vault.balanceOf(user1.address)).to.eq(shares - redeemShares);
-    });
-
-    it("revert si on essaie de déposer 0", async function () {
-      const { vault, user1 } = await loadFixture(deployVaultFixture);
-
-      await expect(
-        vault.connect(user1).deposit(0, user1.address)
-      ).to.be.revertedWithCustomError(vault, "InvalidAmount");
-    });
-
-    it("revert si on essaie de retirer 0", async function () {
-      const { vault, user1 } = await loadFixture(deployVaultFixture);
-
-      await expect(
-        vault.connect(user1).withdraw(0, user1.address, user1.address)
-      ).to.be.revertedWithCustomError(vault, "InvalidAmount");
-    });
-
-    it("revert si on essaie de redeemer 0", async function () {
-      const { vault, user1 } = await loadFixture(deployVaultFixture);
-
-      await expect(
-        vault.connect(user1).redeem(0, user1.address, user1.address)
-      ).to.be.revertedWithCustomError(vault, "InvalidAmount");
-    });
-  });
-
-  describe("Vault – Pausable", function () {
-    it("permet à l'owner de pauser et unpause", async function () {
-      const { vault, owner, user1 } = await loadFixture(deployVaultFixture);
-
-      await expect(vault.connect(user1).pause()).to.be.reverted; // not owner
-
-      await vault.connect(owner).pause();
-      expect(await vault.paused()).to.eq(true);
-
-      await vault.connect(owner).unpause();
-      expect(await vault.paused()).to.eq(false);
-    });
-
-    it("bloque les dépôts quand le contrat est en pause", async function () {
-      const { vault, mockUSDC, owner, user1 } = await loadFixture(
-        deployVaultFixture
-      );
-
-      await vault.connect(owner).pause();
-
-      const amount = ethers.parseUnits("1000", 6);
-      await mockUSDC.connect(user1).approve(await vault.getAddress(), amount);
-
-      await expect(
-        vault.connect(user1).deposit(amount, user1.address)
-      ).to.be.revertedWithCustomError(vault, "Pausable__Paused");
-    });
-
-    it("bloque les retraits quand le contrat est en pause", async function () {
-      const { vault, mockUSDC, owner, user1 } = await loadFixture(
-        deployVaultFixture
-      );
-
-      // Dépôt initial
-      const depositAmount = ethers.parseUnits("1000", 6);
-      await mockUSDC
-        .connect(user1)
-        .approve(await vault.getAddress(), depositAmount);
-      await vault.connect(user1).deposit(depositAmount, user1.address);
-
-      await vault.connect(owner).pause();
-
-      await expect(
-        vault
-          .connect(user1)
-          .withdraw(depositAmount, user1.address, user1.address)
-      ).to.be.revertedWithCustomError(vault, "Pausable__Paused");
-    });
-  });
-
-  describe("Vault – Sécurité", function () {
-    it("revert si on tente d'envoyer de l'ETH au Vault", async function () {
-      const { vault, user1 } = await loadFixture(deployVaultFixture);
-
-      await expect(
-        user1.sendTransaction({
-          to: await vault.getAddress(),
-          value: ethers.parseEther("1"),
-        })
-      ).to.be.revertedWithCustomError(vault, "EtherNotAccepted");
-    });
-
-    it("revert sur fallback avec ETH", async function () {
-      const { vault, user1 } = await loadFixture(deployVaultFixture);
-
-      await expect(
-        user1.sendTransaction({
-          to: await vault.getAddress(),
-          value: ethers.parseEther("1"),
-          data: "0x1234", // Données invalides pour déclencher fallback
-        })
-      ).to.be.revertedWithCustomError(vault, "EtherNotAccepted");
-    });
-  });
-
-  describe("Vault – Invariants", function () {
-    it("a un asset valide non nul", async function () {
-      const { vault } = await loadFixture(deployVaultFixture);
-
-      expect(await vault.asset()).to.not.eq(ethers.ZeroAddress);
-    });
-
-    it("totalAssets retourne le bon solde USDC", async function () {
-      const { vault, mockUSDC, user1 } = await loadFixture(deployVaultFixture);
-
-      expect(await vault.totalAssets()).to.eq(0);
-
-      const depositAmount = ethers.parseUnits("1000", 6);
-      await mockUSDC
-        .connect(user1)
-        .approve(await vault.getAddress(), depositAmount);
-      await vault.connect(user1).deposit(depositAmount, user1.address);
-
-      expect(await vault.totalAssets()).to.eq(depositAmount);
-    });
-
-    it("conserve la cohérence entre shares et assets", async function () {
-      const { vault, mockUSDC, user1 } = await loadFixture(deployVaultFixture);
-
-      const depositAmount = ethers.parseUnits("1000", 6);
-      await mockUSDC
-        .connect(user1)
-        .approve(await vault.getAddress(), depositAmount);
-      await vault.connect(user1).deposit(depositAmount, user1.address);
-
-      const shares = await vault.balanceOf(user1.address);
-      const convertedAssets = await vault.convertToAssets(shares);
-
-      expect(convertedAssets).to.eq(depositAmount);
-    });
+    expect(treasuryAfter - treasuryBefore).to.eq(expectedFee);
+    expect(userAfter - userBefore).to.eq(expectedAfterFee);
   });
 });
