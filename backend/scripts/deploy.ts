@@ -52,23 +52,59 @@ async function main() {
   await tokenRegistry.registerToken(await mockGold.getAddress(), "mGOLD", 18);
   await tokenRegistry.registerToken(await mockBTC.getAddress(), "mBTC", 8);
   await tokenRegistry.registerToken(await mockBonds.getAddress(), "mBONDS", 18);
-  await tokenRegistry.registerToken(await mockEquity.getAddress(), "mEQUITY", 18);
+  await tokenRegistry.registerToken(
+    await mockEquity.getAddress(),
+    "mEQUITY",
+    18
+  );
   console.log("✅ Tous les tokens enregistrés dans le registry");
 
-  // 4. Déploiement du Vault mono-stratégie avec frais
-  console.log("\n🏦 Déploiement du Vault mono-stratégie...");
+  // 4. Déploiement du MockPriceFeed
+  console.log("\n📊 Déploiement du MockPriceFeed...");
+  const MockPriceFeed = await ethers.getContractFactory("MockPriceFeed");
+  const mockPriceFeed = await MockPriceFeed.deploy(deployer.address);
+  await mockPriceFeed.waitForDeployment();
+  console.log("✅ MockPriceFeed déployé à:", await mockPriceFeed.getAddress());
+
+  // 5. Configuration des prix réalistes
+  console.log("\n💰 Configuration des prix réalistes...");
+
+  // Prix en USDC (6 décimales)
+  const btcPrice = parseUnits("118800", 6); // 118,800 USD
+  const equityPrice = parseUnits("623.62", 6); // 623.62 USD
+  const goldPrice = parseUnits("3355", 6); // 3,355 USD
+  const bondPrice = parseUnits("95.78", 6); // 95.78 USD
+  const usdcPrice = parseUnits("1", 6); // 1 USDC = 1 USDC
+
+  await mockPriceFeed.setPrice(await mockBTC.getAddress(), btcPrice, 6);
+  await mockPriceFeed.setPrice(await mockEquity.getAddress(), equityPrice, 6);
+  await mockPriceFeed.setPrice(await mockGold.getAddress(), goldPrice, 6);
+  await mockPriceFeed.setPrice(await mockBonds.getAddress(), bondPrice, 6);
+  await mockPriceFeed.setPrice(await mockUSDC.getAddress(), usdcPrice, 6);
+
+  console.log("✅ Prix configurés:");
+  console.log("  - BTC: $118,800");
+  console.log("  - Equity: $623.62");
+  console.log("  - Gold: $3,355");
+  console.log("  - Bonds: $95.78");
+  console.log("  - USDC: $1.00");
+
+  // 6. Déploiement du Vault avec Oracle
+  console.log("\n🏦 Déploiement du Vault...");
   const Vault = await ethers.getContractFactory("Vault");
   const vault = await Vault.deploy(
-    await mockUSDC.getAddress(),
-    "Équilibrée",
-    treasury.address
+    await mockUSDC.getAddress(), // token sous-jacent
+    "Équilibrée", // label de la stratégie
+    deployer.address, // treasury (utilise le deployer comme treasury pour les tests)
+    await tokenRegistry.getAddress(), // TokenRegistry
+    await mockPriceFeed.getAddress() // Oracle
   );
   await vault.waitForDeployment();
   console.log("✅ Vault déployé à:", await vault.getAddress());
   console.log("   Treasury:", treasury.address);
 
-  // 5. Configuration de la stratégie équilibrée
-  console.log("\n⚖️ Configuration de la stratégie 'Équilibrée'...");
+  // 7. Configuration de la stratégie équilibrée
+  console.log("\n⚖️ Configuration de la stratégie équilibrée...");
 
   const strategyAllocations = [
     {
@@ -101,22 +137,35 @@ async function main() {
   await vault.setAllocations(strategyAllocations);
   console.log("✅ Stratégie 'Équilibrée' configurée");
 
-  // 6. Bootstrap du Vault (1 USDC vers treasury)
-  console.log("\n🛠️ Bootstrap du Vault...");
+  // 8. Configuration des frais
+  console.log("\n💰 Configuration des frais...");
 
-  const bootstrapAmount = parseUnits("1", 6); // 1 USDC
-  await mockUSDC.approve(await vault.getAddress(), bootstrapAmount);
-  await vault.bootstrapVault();
-  console.log("✅ Vault bootstrappé avec 1 USDC vers treasury");
+  // Définir les frais de sortie à 0.5% (50 basis points)
+  await vault.setExitFeeBps(50);
+  console.log("✅ Frais de sortie configurés à 0.5%");
 
-  // 7. Mint de tokens pour le déploiement
+  // Définir le fee receiver (utilise le deployer pour les tests)
+  await vault.setFeeReceiver(deployer.address);
+  console.log("✅ Fee receiver configuré");
+
+  // 9. Mint de tokens pour le déploiement
   console.log("\n💰 Mint de tokens pour le déploiement...");
 
   const mintAmount = parseUnits("1000000", 6); // 1M USDC
   await mockUSDC.mint(deployer.address, mintAmount);
   console.log("✅ 1M MockUSDC mintés pour le déploiement");
 
-  // 8. Affichage des adresses finales
+  // 10. Bootstrap du Vault
+  console.log("\n🚀 Bootstrap du Vault...");
+
+  // Approbation pour le bootstrap
+  const bootstrapAmount = parseUnits("1", 6); // 1 USDC
+  await mockUSDC.approve(await vault.getAddress(), bootstrapAmount);
+
+  await vault.bootstrapVault();
+  console.log("✅ Vault bootstrappé avec 1 USDC");
+
+  // 11. Affichage des adresses finales
   console.log("\n🎯 Adresses des contrats déployés:");
   console.log("MockUSDC:", await mockUSDC.getAddress());
   console.log("MockGold:", await mockGold.getAddress());
@@ -124,6 +173,7 @@ async function main() {
   console.log("MockBonds:", await mockBonds.getAddress());
   console.log("MockEquity:", await mockEquity.getAddress());
   console.log("TokenRegistry:", await tokenRegistry.getAddress());
+  console.log("MockPriceFeed:", await mockPriceFeed.getAddress());
   console.log("Vault:", await vault.getAddress());
   console.log("Treasury:", treasury.address);
 

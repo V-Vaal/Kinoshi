@@ -119,4 +119,22 @@ contract TokenRegistry is Ownable {
         }
         return count;
     }
+        /**
+     * @dev Récupère les décimales d’un token enregistré
+     * @param token Adresse du token
+     */
+    function getTokenDecimals(address token) external view returns (uint8) {
+        if (!registeredTokens[token].isRegistered) revert TokenNotRegistered();
+        return registeredTokens[token].decimals;
+    }
+
+    /**
+     * @dev Active ou désactive manuellement un token déjà enregistré
+     * @param token Adresse du token
+     * @param active Statut d'activation
+     */
+    function setTokenActive(address token, bool active) external onlyOwner {
+        if (!registeredTokens[token].isRegistered) revert TokenNotRegistered();
+        registeredTokens[token].isRegistered = active;
+    }
 } 

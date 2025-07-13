@@ -11,4 +11,6 @@ error EtherNotAccepted();
 error Pausable__Paused();
 error InvalidSymbol();
 error TokenAlreadyRegistered();
-error TokenNotRegistered(); 
+error TokenNotRegistered();
+error VaultAlreadyBootstrapped();
+error PriceNotSet(); 

@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "./errors.sol";
+import "./TokenRegistry.sol";
+import "./interfaces/IPriceOracle.sol";
 
 contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     struct AssetAllocation {
@@ -27,18 +29,30 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     // Adresse du treasury pour le bootstrap et les frais
     address public immutable treasury;
 
+    // Registry des tokens autorisés
+    TokenRegistry public immutable registry;
+
+    // Oracle de prix pour la valorisation des actifs
+    IPriceOracle public immutable oracle;
+
+    // Adresse du receiver des frais de gestion
+    address public feeReceiver;
+
     event Deposited(address indexed user, uint256 amount);
     event WithdrawExecuted(address indexed user, address indexed receiver, uint256 assets);
     event AllocationsUpdated(address indexed admin);
     event ExitFeeApplied(address indexed user, uint256 assets, uint256 fee);
+    event ManagementFeeAccrued(address indexed receiver, uint256 shares);
 
     /**
      * @notice Constructeur du Vault
      * @param asset_ Token sous-jacent (MockUSDC dans la V1)
      * @param label Nom de la stratégie associée à ce Vault (ex: "Équilibrée")
      * @param treasury_ Adresse du treasury pour le bootstrap et les frais
+     * @param registry_ Registry des tokens autorisés
+     * @param oracle_ Oracle de prix pour la valorisation des actifs
      */
-    constructor(IERC20 asset_, string memory label, address treasury_)
+    constructor(IERC20 asset_, string memory label, address treasury_, TokenRegistry registry_, IPriceOracle oracle_)
         ERC4626(asset_)
         ERC20("Kinoshi Vault Share", "KNSHVS")
         Ownable(msg.sender)
@@ -47,6 +61,8 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     {
         strategyLabel = label;
         treasury = treasury_;
+        registry = registry_;
+        oracle = oracle_;
     }
 
     /**
@@ -63,6 +79,7 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
             if (newAllocations[i].token == address(0)) revert ZeroAddress();
             allocations.push(newAllocations[i]);
             if (newAllocations[i].active) {
+                if (!registry.isTokenRegistered(newAllocations[i].token)) revert TokenNotRegistered();
                 totalWeight += newAllocations[i].weight;
             }
         }
@@ -93,8 +110,27 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
      * @dev Évite les dépôts à taux arbitraire quand totalSupply == 0
      */
     function bootstrapVault() external onlyOwner {
-        require(totalSupply() == 0, "Vault already bootstrapped");
+        if (totalSupply() > 0) revert VaultAlreadyBootstrapped();
         deposit(1e6, treasury); // 1 USDC (6 décimales)
+    }
+
+    /**
+     * @notice Met à jour l'adresse du receiver des frais de gestion (owner only)
+     * @param newReceiver Nouvelle adresse du receiver
+     */
+    function setFeeReceiver(address newReceiver) external onlyOwner {
+        if (newReceiver == address(0)) revert ZeroAddress();
+        feeReceiver = newReceiver;
+    }
+
+    /**
+     * @notice Accrue des frais de gestion en mintant des parts (owner only)
+     * @param shares Nombre de parts à mint pour les frais de gestion
+     */
+    function accrueManagementFee(uint256 shares) external onlyOwner {
+        if (shares == 0) revert InvalidAmount();
+        _mint(feeReceiver, shares);
+        emit ManagementFeeAccrued(feeReceiver, shares);
     }
 
     /**
@@ -165,13 +201,56 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Retourne le solde d'USDC détenu dans le Vault
+     * @notice Calcule la valeur d'un actif en USDC via l'oracle
+     * @param token Adresse du token
+     * @param balance Balance du token dans le Vault
+     * @return Valeur en USDC (6 décimales)
      */
-    function totalAssets() public view override returns (uint256) {
-        return IERC20(asset()).balanceOf(address(this));
+    function _getAssetValue(address token, uint256 balance) internal view returns (uint256) {
+        if (balance == 0) return 0;
+        
+        (uint256 price, uint8 priceDecimals) = oracle.getPrice(token);
+        
+        // Récupérer les décimales du token via le registry
+        uint256 tokenDecimals = registry.getTokenDecimals(token);
+        
+        // Convertir le prix en USDC (6 décimales)
+        // Formule: balance * price / (10^priceDecimals) * (10^6) / (10^tokenDecimals)
+        if (priceDecimals >= 6 && tokenDecimals <= 6) {
+            // Simplification: price / (10^(priceDecimals - 6)) * balance / (10^tokenDecimals)
+            return (price / (10 ** (priceDecimals - 6))) * balance / (10 ** tokenDecimals);
+        } else {
+            // Calcul complet avec précision
+            uint256 value = (balance * price) / (10 ** priceDecimals);
+            return value * (10 ** 6) / (10 ** tokenDecimals);
+        }
     }
 
-    function _decimalsOffset() internal view override returns (uint8) {
+    /**
+     * @notice Retourne la valeur totale des actifs du Vault en USDC
+     * @dev Calcule la somme pondérée des actifs alloués via l'oracle
+     */
+    function totalAssets() public view override returns (uint256) {
+        uint256 totalValue = 0;
+        
+        // Parcourir toutes les allocations actives
+        for (uint256 i = 0; i < allocations.length; i++) {
+            AssetAllocation memory allocation = allocations[i];
+            
+            if (allocation.active) {
+                uint256 balance = IERC20(allocation.token).balanceOf(address(this));
+                uint256 assetValue = _getAssetValue(allocation.token, balance);
+                
+                // Appliquer la pondération (weight en 1e18)
+                uint256 weightedValue = (assetValue * allocation.weight) / 1e18;
+                totalValue += weightedValue;
+            }
+        }
+        
+        return totalValue;
+    }
+
+    function _decimalsOffset() internal pure override returns (uint8) {
         return 12;
     }
 
