@@ -274,4 +274,68 @@ describe("Vault.sol – Security", function () {
       ).to.be.revertedWithCustomError(vault, "Pausable__Paused");
     });
   });
+  
+  describe("Vault - Sécurité avancée", function () {
+    it("ForceSend : le Vault reste fonctionnel malgré un envoi d'ETH forcé via selfdestruct", async function () {
+      const { vault, user1, mockUSDC } = await loadFixture(deployVaultFixture);
+
+      const ForceSendFactory = await ethers.getContractFactory("ForceSend");
+      const forceSend = await ForceSendFactory.deploy({ value: ethers.parseEther("1") });
+      
+      // Force send ETH via selfdestruct
+      await forceSend.forceSend(await vault.getAddress());
+
+      // Vérification que le vault a bien reçu l’ETH mais reste opérationnel
+      const balance = await ethers.provider.getBalance(await vault.getAddress());
+      expect(balance).to.be.gt(0);
+
+      // Vérifie que deposit() fonctionne toujours
+      const amount = ethers.parseUnits("100", 6); // MockUSDC
+      await mockUSDC.connect(user1).mint(user1.address, amount);
+      await mockUSDC.connect(user1).approve(await vault.getAddress(), amount);
+
+      await expect(vault.connect(user1).deposit(amount, user1.address)).not.to.be.reverted;
+    });
+  });
+
+  it("Front-running : previewDeposit peut être trompeur si des frais de gestion sont prélevés entre temps", async function () {
+    const { vault, user1, owner, mockUSDC } = await loadFixture(deployVaultFixture);
+
+    // user1 dépose d'abord pour initialiser le Vault
+    const initialAmount = ethers.parseUnits("1000", 6);
+    await mockUSDC.connect(user1).mint(user1.address, initialAmount);
+    await mockUSDC.connect(user1).approve(await vault.getAddress(), initialAmount);
+    await vault.connect(user1).deposit(initialAmount, user1.address);
+
+    // user1 preview pour un nouveau dépôt
+    const amount = ethers.parseUnits("100", 6);
+    await mockUSDC.connect(user1).mint(user1.address, amount);
+    await mockUSDC.connect(user1).approve(await vault.getAddress(), amount);
+    const previewShares = await vault.previewDeposit(amount);
+
+    // On définit un feeReceiver valide avant de prélever les frais
+    await vault.connect(owner).setFeeReceiver(owner.address);
+
+    // L'owner prélève des frais de gestion (dilution)
+    const feeShares = ethers.parseUnits("100", 18); // 100 shares de frais
+    await vault.connect(owner).accrueManagementFee(feeShares);
+
+    // user1 effectue finalement son dépôt
+    const tx = await vault.connect(user1).deposit(amount, user1.address);
+    const receipt = await tx.wait();
+    if (!receipt) throw new Error("Aucun receipt de transaction");
+    // Recherche de l'event Deposit
+    const depositEvent = receipt.logs
+      .map((log: any) => {
+        try {
+          return vault.interface.parseLog(log);
+        } catch {
+          return null;
+        }
+      })
+      .find((e: any) => e && e.name === "Deposit");
+
+    const shares = depositEvent?.args?.[3]; // amountShares
+    expect(shares).to.not.equal(previewShares); // le ratio a changé, le résultat n'est pas garanti
+  });
 });
