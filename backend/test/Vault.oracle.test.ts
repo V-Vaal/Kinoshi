@@ -254,7 +254,8 @@ describe("Vault.sol – Oracle Integration", function () {
     });
 
     it("reflète une manipulation de prix oracle dans totalAssets", async function () {
-      const { vault, mockPriceFeed, mockGold, mockUSDC, owner } = await loadFixture(deployVaultWithOracleFixture);
+      const { vault, mockPriceFeed, mockGold, mockUSDC, owner } =
+        await loadFixture(deployVaultWithOracleFixture);
 
       // Configuration 100% GOLD
       const allocations = [
@@ -271,11 +272,19 @@ describe("Vault.sol – Oracle Integration", function () {
       await mockGold.transfer(await vault.getAddress(), goldAmount);
 
       // Prix initial
-      await mockPriceFeed.setPrice(await mockGold.getAddress(), parseUnits("100", 6), 6);
+      await mockPriceFeed.setPrice(
+        await mockGold.getAddress(),
+        parseUnits("100", 6),
+        6
+      );
       const before = await vault.totalAssets();
 
       // Manipulation de prix
-      await mockPriceFeed.setPrice(await mockGold.getAddress(), parseUnits("500", 6), 6);
+      await mockPriceFeed.setPrice(
+        await mockGold.getAddress(),
+        parseUnits("500", 6),
+        6
+      );
       const after = await vault.totalAssets();
 
       expect(after).to.be.gt(before);
