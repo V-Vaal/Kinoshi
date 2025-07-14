@@ -16,7 +16,7 @@ import {
 } from 'wagmi/actions'
 import type { Abi } from 'viem'
 import { wagmiConfig } from '@/wagmi.config'
-import vaultAbiJson from '@/../backend/abis/Vault.abi.json'
+import vaultAbiJson from '@/abis/Vault.abi.json'
 import { vaultAddress } from '@/constants'
 
 const vaultAbi = (vaultAbiJson.abi ?? vaultAbiJson) as Abi
