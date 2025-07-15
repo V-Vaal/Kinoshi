@@ -13,16 +13,13 @@ import {
 } from '@/components/ui'
 import { toast } from 'sonner'
 import { isAddress } from 'viem'
-import { useAccount } from 'wagmi'
 import { writeContract, waitForTransactionReceipt } from 'wagmi/actions'
 import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
-import type { Abi } from 'viem'
 import tokenRegistryAbi from '@/abis/TokenRegistry.abi.json'
 import { tokenRegistryAddress } from '@/constants'
 
 const TokenManager: React.FC = () => {
   const { registeredTokens, fetchTokenData, isLoading } = useTokenRegistry()
-  const { isConnected } = useAccount()
   const [addAddress, setAddAddress] = useState('')
   const [addName, setAddName] = useState('')
   const [isAdding, setIsAdding] = useState(false)
@@ -41,7 +38,7 @@ const TokenManager: React.FC = () => {
       await waitForTransactionReceipt(wagmiConfig, { hash })
       toast.success('Statut du token mis à jour !')
       await fetchTokenData()
-    } catch (error) {
+    } catch {
       toast.error('Erreur lors du changement de statut du token')
     } finally {
       setToggleLoading(null)
@@ -72,7 +69,7 @@ const TokenManager: React.FC = () => {
       setAddAddress('')
       setAddName('')
       await fetchTokenData()
-    } catch (error) {
+    } catch {
       toast.error("Erreur lors de l'ajout du token")
     } finally {
       setIsAdding(false)

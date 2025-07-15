@@ -89,7 +89,7 @@ const AdminPanel: React.FC = () => {
     const equalWeight = Math.round(100 / activeAllocations.length)
     const remainder = 100 - equalWeight * activeAllocations.length
 
-    const newAllocations = allocations.map((allocation, index) => {
+    const newAllocations = allocations.map((allocation) => {
       if (!allocation.active) return allocation
 
       const activeIndex = activeAllocations.findIndex(
@@ -290,7 +290,7 @@ const AdminPanel: React.FC = () => {
 
               {/* Liste des tokens avec sliders */}
               <div className="space-y-4">
-                {allocations.map((allocation, index) => (
+                {allocations.map((allocation, idx) => (
                   <div
                     key={allocation.tokenAddress}
                     className="p-4 border border-[var(--kinoshi-border)] rounded-lg"
@@ -301,7 +301,7 @@ const AdminPanel: React.FC = () => {
                           type="checkbox"
                           checked={allocation.active}
                           onChange={(e) =>
-                            updateAllocation(index, 'active', e.target.checked)
+                            updateAllocation(idx, 'active', e.target.checked)
                           }
                           className="w-4 h-4 text-[var(--kinoshi-primary)]"
                         />
@@ -315,7 +315,7 @@ const AdminPanel: React.FC = () => {
                           value={allocation.weight}
                           onChange={(e) =>
                             updateAllocation(
-                              index,
+                              idx,
                               'weight',
                               parseFloat(e.target.value) || 0
                             )
@@ -336,7 +336,7 @@ const AdminPanel: React.FC = () => {
                       <Slider
                         value={[allocation.weight]}
                         onValueChange={([value]: number[]) =>
-                          updateAllocation(index, 'weight', value)
+                          updateAllocation(idx, 'weight', value)
                         }
                         max={100}
                         min={0}
