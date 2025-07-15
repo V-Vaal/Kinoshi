@@ -3,6 +3,10 @@
 import React, { useState, useEffect } from 'react'
 import { parseUnits, formatUnits } from 'viem'
 import { useAccount } from 'wagmi'
+import { writeContract, waitForTransactionReceipt } from 'wagmi/actions'
+import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
+import vaultAbiJson from '@/abis/Vault.abi.json'
+import { vaultAddress } from '@/constants'
 import { useVault } from '@/context/VaultContext'
 import {
   Button,
@@ -16,6 +20,14 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import Alert from './Alert'
 
+const vaultAbi = (vaultAbiJson.abi ?? vaultAbiJson) as readonly unknown[]
+
+const errorMessages: Record<string, string> = {
+  Paused: 'Les dépôts/retraits sont actuellement suspendus.',
+  ZeroAmount: 'Veuillez saisir un montant supérieur à 0.',
+  Unauthorized: 'Action non autorisée.',
+}
+
 const DepositForm: React.FC = () => {
   const [amount, setAmount] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -23,9 +35,10 @@ const DepositForm: React.FC = () => {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [hasRiskProfile, setHasRiskProfile] = useState<boolean | null>(null)
+  const [contractError, setContractError] = useState<string | null>(null)
 
   const { isConnected } = useAccount()
-  const { deposit, previewDeposit, decimals } = useVault()
+  const { previewDeposit, decimals } = useVault()
 
   // Vérifier si l'utilisateur a un profil de risque
   useEffect(() => {
@@ -79,17 +92,29 @@ const DepositForm: React.FC = () => {
   }, [amount, decimals, previewDeposit])
 
   const handleDeposit = async () => {
+    setContractError(null)
     if (!amount || !decimals) return
-
     setIsLoading(true)
     try {
       const amountBigInt = parseUnits(amount, decimals)
-      await deposit(amountBigInt)
+      const hash = await writeContract(wagmiConfig, {
+        abi: vaultAbi,
+        address: vaultAddress as `0x${string}`,
+        functionName: 'deposit',
+        args: [amountBigInt],
+      })
+      await waitForTransactionReceipt(wagmiConfig, { hash })
       toast.success('Dépôt effectué avec succès !')
       setAmount('')
     } catch (error) {
-      console.error('Erreur lors du dépôt:', error)
-      toast.error('Erreur lors du dépôt. Veuillez réessayer.')
+      let message = 'Erreur lors du dépôt. Veuillez réessayer.'
+      if (typeof error === 'object' && error && 'message' in error && typeof (error as { message?: unknown }).message === 'string') {
+        const match = /Custom error: (\w+)/.exec((error as { message: string }).message)
+        if (match && errorMessages[match[1]]) {
+          message = errorMessages[match[1]]
+        }
+      }
+      setContractError(message)
     } finally {
       setIsLoading(false)
     }
@@ -173,6 +198,7 @@ const DepositForm: React.FC = () => {
           ) : null}
         </div>
       )}
+      {contractError && <Alert message={contractError} className="mt-2" />}
       <Alert
         message="⚠️ Le résultat de previewDeposit() est estimatif et peut varier selon l’exécution réelle."
         className="mt-4"

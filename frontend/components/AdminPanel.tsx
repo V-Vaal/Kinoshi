@@ -50,7 +50,7 @@ const AdminPanel: React.FC = () => {
   useEffect(() => {
     if (registeredTokens.length > 0) {
       const initialAllocations: TokenAllocation[] = registeredTokens.map(
-        (token, index) => ({
+        (token) => ({
           tokenAddress: token.tokenAddress,
           symbol: token.symbol,
           decimals: token.decimals,
@@ -290,7 +290,7 @@ const AdminPanel: React.FC = () => {
 
               {/* Liste des tokens avec sliders */}
               <div className="space-y-4">
-                {allocations.map((allocation, idx) => (
+                {allocations.map((allocation) => (
                   <div
                     key={allocation.tokenAddress}
                     className="p-4 border border-[var(--kinoshi-border)] rounded-lg"
@@ -301,7 +301,13 @@ const AdminPanel: React.FC = () => {
                           type="checkbox"
                           checked={allocation.active}
                           onChange={(e) =>
-                            updateAllocation(idx, 'active', e.target.checked)
+                            updateAllocation(
+                              allocations.findIndex(
+                                (a) => a.tokenAddress === allocation.tokenAddress
+                              ),
+                              'active',
+                              e.target.checked
+                            )
                           }
                           className="w-4 h-4 text-[var(--kinoshi-primary)]"
                         />
@@ -315,7 +321,9 @@ const AdminPanel: React.FC = () => {
                           value={allocation.weight}
                           onChange={(e) =>
                             updateAllocation(
-                              idx,
+                              allocations.findIndex(
+                                (a) => a.tokenAddress === allocation.tokenAddress
+                              ),
                               'weight',
                               parseFloat(e.target.value) || 0
                             )
@@ -336,7 +344,13 @@ const AdminPanel: React.FC = () => {
                       <Slider
                         value={[allocation.weight]}
                         onValueChange={([value]: number[]) =>
-                          updateAllocation(idx, 'weight', value)
+                          updateAllocation(
+                            allocations.findIndex(
+                              (a) => a.tokenAddress === allocation.tokenAddress
+                            ),
+                            'weight',
+                            value
+                          )
                         }
                         max={100}
                         min={0}

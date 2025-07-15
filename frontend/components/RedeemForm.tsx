@@ -7,6 +7,17 @@ import { useVault } from '@/context/VaultContext'
 import { Button, Input } from '@/components/ui'
 import { toast } from 'sonner'
 import Alert from './Alert'
+import { writeContract, waitForTransactionReceipt } from 'wagmi/actions'
+import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
+import vaultAbiJson from '@/abis/Vault.abi.json'
+import { vaultAddress } from '@/constants'
+
+const vaultAbi = (vaultAbiJson.abi ?? vaultAbiJson) as readonly unknown[]
+const errorMessages: Record<string, string> = {
+  Paused: 'Les dépôts/retraits sont actuellement suspendus.',
+  ZeroAmount: 'Veuillez saisir un montant supérieur à 0.',
+  Unauthorized: 'Action non autorisée.',
+}
 
 const RedeemForm: React.FC = () => {
   const [shares, setShares] = useState('')
@@ -14,9 +25,10 @@ const RedeemForm: React.FC = () => {
   const [previewAmount, setPreviewAmount] = useState<string | null>(null)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [contractError, setContractError] = useState<string | null>(null)
 
   const { address, isConnected } = useAccount()
-  const { redeem, previewRedeem, userShares, decimals } = useVault()
+  const { previewRedeem, userShares, decimals } = useVault()
 
   // Estimation du montant à retirer
   useEffect(() => {
@@ -59,16 +71,29 @@ const RedeemForm: React.FC = () => {
   }
 
   const handleRedeem = async () => {
+    setContractError(null)
     if (!shares || !decimals || !address) return
     setIsLoading(true)
     try {
       const sharesBigInt = parseUnits(shares, decimals)
-      await redeem(sharesBigInt, address, address)
+      const hash = await writeContract(wagmiConfig, {
+        abi: vaultAbi,
+        address: vaultAddress as `0x${string}`,
+        functionName: 'redeem',
+        args: [sharesBigInt, address, address],
+      })
+      await waitForTransactionReceipt(wagmiConfig, { hash })
       toast.success('Retrait effectué avec succès !')
       setShares('')
     } catch (error) {
-      console.error('Erreur lors du retrait:', error)
-      toast.error('Erreur lors du retrait. Veuillez réessayer.')
+      let message = 'Erreur lors du retrait. Veuillez réessayer.'
+      if (typeof error === 'object' && error && 'message' in error && typeof (error as { message?: unknown }).message === 'string') {
+        const match = /Custom error: (\w+)/.exec((error as { message: string }).message)
+        if (match && errorMessages[match[1]]) {
+          message = errorMessages[match[1]]
+        }
+      }
+      setContractError(message)
     } finally {
       setIsLoading(false)
     }
@@ -111,6 +136,7 @@ const RedeemForm: React.FC = () => {
           ) : null}
         </div>
       )}
+      {contractError && <Alert message={contractError} className="mt-2" />}
       <Alert
         message="⚠️ Le résultat de previewDeposit() est estimatif et peut varier selon l’exécution réelle."
         className="mt-4"
