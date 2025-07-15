@@ -118,12 +118,14 @@ describe("Vault.sol – Fees", function () {
   });
 
   describe("Vault – Exit Fees", function () {
-    it("setExitFeeBps() fonctionne correctement (onlyOwner)", async function () {
+    it("setFees() fonctionne correctement (onlyOwner)", async function () {
       const { vault, owner } = await loadFixture(deployVaultFixture);
 
-      const newFeeBps = 100; // 1%
-      await vault.connect(owner).setExitFeeBps(newFeeBps);
-      expect(await vault.exitFeeBps()).to.eq(newFeeBps);
+      const newExitFeeBps = 100; // 1%
+      const newManagementFeeBps = 50; // 0.5%
+      await vault.connect(owner).setFees(newExitFeeBps, newManagementFeeBps);
+      expect(await vault.exitFeeBps()).to.eq(newExitFeeBps);
+      expect(await vault.managementFeeBps()).to.eq(newManagementFeeBps);
     });
 
     it("le redeem() applique bien le fee quand exitFeeBps > 0", async function () {
@@ -132,7 +134,7 @@ describe("Vault.sol – Fees", function () {
       );
 
       // Configurer les frais de sortie à 1% (100 basis points)
-      await vault.connect(owner).setExitFeeBps(100);
+      await vault.connect(owner).setFees(100, 50);
 
       // Dépôt initial
       const depositAmount = ethers.parseUnits("1000", 6);
@@ -163,7 +165,7 @@ describe("Vault.sol – Fees", function () {
       );
 
       // S'assurer que les frais sont à 0
-      await vault.connect(owner).setExitFeeBps(0);
+      await vault.connect(owner).setFees(0, 50);
 
       // Dépôt initial
       const depositAmount = ethers.parseUnits("1000", 6);
@@ -194,7 +196,7 @@ describe("Vault.sol – Fees", function () {
       );
 
       // Configurer les frais de sortie à 2% (200 basis points)
-      await vault.connect(owner).setExitFeeBps(200);
+      await vault.connect(owner).setFees(200, 50);
 
       // Dépôt initial
       const depositAmount = ethers.parseUnits("1000", 6);
@@ -227,7 +229,7 @@ describe("Vault.sol – Fees", function () {
       );
 
       // Configurer les frais de sortie à 1% (100 basis points)
-      await vault.connect(owner).setExitFeeBps(100);
+      await vault.connect(owner).setFees(100, 50);
 
       // Dépôt initial
       const depositAmount = ethers.parseUnits("1000", 6);
@@ -254,21 +256,25 @@ describe("Vault.sol – Fees", function () {
     it("un non-owner ne peut pas modifier les frais", async function () {
       const { vault, user1 } = await loadFixture(deployVaultFixture);
 
-      const newFeeBps = 100;
+      const newExitFeeBps = 100;
+      const newManagementFeeBps = 50;
       await expect(
-        vault.connect(user1).setExitFeeBps(newFeeBps)
-      ).to.be.revertedWithCustomError(vault, "OwnableUnauthorizedAccount");
+        vault.connect(user1).setFees(newExitFeeBps, newManagementFeeBps)
+      ).to.be.revertedWith("Not admin");
     });
 
-    it("exitFeeBps ne peut pas dépasser MAX_FEE_BPS", async function () {
+    it("exitFeeBps et managementFeeBps ne peuvent pas dépasser MAX_FEE_BPS", async function () {
       const { vault, owner } = await loadFixture(deployVaultFixture);
 
       const maxFeeBps = await vault.MAX_FEE_BPS();
       const invalidFeeBps = maxFeeBps + 1n;
 
       await expect(
-        vault.connect(owner).setExitFeeBps(invalidFeeBps)
-      ).to.be.revertedWith("Fee exceeds maximum");
+        vault.connect(owner).setFees(invalidFeeBps, 0)
+      ).to.be.revertedWith("Exit fee too high");
+      await expect(
+        vault.connect(owner).setFees(0, invalidFeeBps)
+      ).to.be.revertedWith("Management fee too high");
     });
   });
 });

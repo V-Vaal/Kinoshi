@@ -208,28 +208,34 @@ describe("Vault.sol – Core", function () {
   });
 
   describe("Vault – Exit Fees", function () {
-    it("permet à l'owner de modifier le exitFeeBps", async function () {
+    it("permet à l'owner de modifier les frais via setFees", async function () {
       const { vault, owner } = await loadFixture(deployVaultFixture);
 
-      const newFee = 300;
-      await vault.connect(owner).setExitFeeBps(newFee);
-      expect(await vault.exitFeeBps()).to.equal(newFee);
+      const newExitFeeBps = 300;
+      const newManagementFeeBps = 100;
+      await vault.connect(owner).setFees(newExitFeeBps, newManagementFeeBps);
+      expect(await vault.exitFeeBps()).to.equal(newExitFeeBps);
+      expect(await vault.managementFeeBps()).to.equal(newManagementFeeBps);
     });
 
     it("revert si un non-owner tente de modifier les frais", async function () {
       const { vault, user1 } = await loadFixture(deployVaultFixture);
 
-      await expect(
-        vault.connect(user1).setExitFeeBps(100)
-      ).to.be.revertedWithCustomError(vault, "OwnableUnauthorizedAccount");
+      await expect(vault.connect(user1).setFees(100, 50)).to.be.revertedWith(
+        "Not admin"
+      );
     });
 
     it("revert si on dépasse la limite MAX_FEE_BPS", async function () {
       const { vault, owner } = await loadFixture(deployVaultFixture);
 
-      await expect(vault.connect(owner).setExitFeeBps(1001)).to.be.revertedWith(
-        "Fee exceeds maximum"
-      );
+      const maxFeeBps = await vault.MAX_FEE_BPS();
+      await expect(
+        vault.connect(owner).setFees(maxFeeBps + 1n, 0)
+      ).to.be.revertedWith("Exit fee too high");
+      await expect(
+        vault.connect(owner).setFees(0, maxFeeBps + 1n)
+      ).to.be.revertedWith("Management fee too high");
     });
 
     it("n'applique pas de frais si exitFeeBps == 0", async function () {
@@ -262,7 +268,7 @@ describe("Vault.sol – Core", function () {
         deployVaultFixture
       );
 
-      await vault.connect(owner).setExitFeeBps(500); // 5%
+      await vault.connect(owner).setFees(500, 100); // 5% exit fee, 1% management fee
 
       const depositAmount = ethers.parseUnits("1000", 6);
       await mockUSDC.connect(user1).approve(vault, depositAmount);

@@ -26,6 +26,9 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     uint256 public constant MAX_FEE_BPS = 1000; // 10%
     uint256 public exitFeeBps;
 
+    // Frais de gestion en basis points (1 BPS = 0.01%)
+    uint256 public managementFeeBps;
+
     // Adresse du treasury pour le bootstrap et les frais
     address public immutable treasury;
 
@@ -52,6 +55,7 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     event ManagementFeeAccrued(address indexed receiver, uint256 shares);
     event Allocated(address indexed token, uint256 amount);
     event TreasuryWithdrawn(address indexed to, uint256 amount);
+    event FeesUpdated(uint256 exitFeeBps, uint256 managementFeeBps);
 
     /**
      * @notice Constructeur du Vault
@@ -72,13 +76,14 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         treasury = treasury_;
         registry = registry_;
         oracle = oracle_;
+        isAdmin[msg.sender] = true;
     }
 
     /**
      * @notice Met à jour l'allocation de la stratégie du Vault (owner only)
      * @param newAllocations Liste des nouveaux actifs pondérés
      */
-    function setAllocations(AssetAllocation[] memory newAllocations) external onlyOwner {
+    function setAllocations(AssetAllocation[] memory newAllocations) external onlyAdmin {
         require(newAllocations.length > 0, "Allocations cannot be empty");
 
         delete allocations;
@@ -106,12 +111,16 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Met à jour les frais de sortie (owner only)
-     * @param newFeeBps Nouveaux frais en basis points (max 1000 = 10%)
+     * @notice Permet à un admin de modifier les frais de sortie et de gestion
+     * @param _exitFeeBps Frais de sortie en basis points (max 1000 = 10%)
+     * @param _managementFeeBps Frais de gestion en basis points (max 1000 = 10%)
      */
-    function setExitFeeBps(uint256 newFeeBps) external onlyOwner {
-        require(newFeeBps <= MAX_FEE_BPS, "Fee exceeds maximum");
-        exitFeeBps = newFeeBps;
+    function setFees(uint256 _exitFeeBps, uint256 _managementFeeBps) external onlyAdmin {
+        require(_exitFeeBps <= MAX_FEE_BPS, "Exit fee too high");
+        require(_managementFeeBps <= MAX_FEE_BPS, "Management fee too high");
+        exitFeeBps = _exitFeeBps;
+        managementFeeBps = _managementFeeBps;
+        emit FeesUpdated(_exitFeeBps, _managementFeeBps);
     }
 
     /**

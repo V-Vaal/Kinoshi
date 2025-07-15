@@ -35,7 +35,7 @@ describe("Vault - Gestion des rôles (admin/whitelist)", function () {
     await vault.connect(owner).setWhitelisted(user2.address, true);
     expect(await vault.isAdmin(user1.address)).to.be.true;
     expect(await vault.isWhitelisted(user2.address)).to.be.true;
-    expect(await vault.isAdmin(owner.address)).to.be.false;
+    expect(await vault.isAdmin(owner.address)).to.be.true; // owner est admin par défaut
     expect(await vault.isWhitelisted(owner.address)).to.be.false;
   });
 });

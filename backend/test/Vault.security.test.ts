@@ -65,21 +65,37 @@ describe("Vault.sol – Security", function () {
 
       await expect(
         vault.connect(user1).setAllocations(newAllocations)
-      ).to.be.revertedWithCustomError(vault, "OwnableUnauthorizedAccount");
+      ).to.be.revertedWith("Not admin");
 
       await vault.connect(owner).setAllocations(newAllocations);
     });
 
-    it("seul l'owner peut modifier les frais de sortie", async function () {
+    it("seul l'owner peut modifier les frais de sortie et de gestion", async function () {
       const { vault, owner, user1 } = await loadFixture(deployVaultFixture);
 
-      const newFeeBps = 100;
+      const newExitFeeBps = 100;
+      const newManagementFeeBps = 50;
       await expect(
-        vault.connect(user1).setExitFeeBps(newFeeBps)
-      ).to.be.revertedWithCustomError(vault, "OwnableUnauthorizedAccount");
+        vault.connect(user1).setFees(newExitFeeBps, newManagementFeeBps)
+      ).to.be.revertedWith("Not admin");
 
-      await vault.connect(owner).setExitFeeBps(newFeeBps);
-      expect(await vault.exitFeeBps()).to.eq(newFeeBps);
+      await vault.connect(owner).setFees(newExitFeeBps, newManagementFeeBps);
+      expect(await vault.exitFeeBps()).to.eq(newExitFeeBps);
+      expect(await vault.managementFeeBps()).to.eq(newManagementFeeBps);
+    });
+
+    it("exitFeeBps et managementFeeBps ne peuvent pas dépasser MAX_FEE_BPS", async function () {
+      const { vault, owner } = await loadFixture(deployVaultFixture);
+
+      const maxFeeBps = await vault.MAX_FEE_BPS();
+      const invalidFeeBps = maxFeeBps + 1n;
+
+      await expect(
+        vault.connect(owner).setFees(invalidFeeBps, 0)
+      ).to.be.revertedWith("Exit fee too high");
+      await expect(
+        vault.connect(owner).setFees(0, invalidFeeBps)
+      ).to.be.revertedWith("Management fee too high");
     });
   });
 
@@ -203,17 +219,6 @@ describe("Vault.sol – Security", function () {
       await expect(
         vault.connect(owner).setAllocations(invalidAllocations)
       ).to.be.revertedWithCustomError(vault, "InvalidWeightSum");
-    });
-
-    it("exitFeeBps ne peut pas dépasser MAX_FEE_BPS", async function () {
-      const { vault, owner } = await loadFixture(deployVaultFixture);
-
-      const maxFeeBps = await vault.MAX_FEE_BPS();
-      const invalidFeeBps = maxFeeBps + 1n;
-
-      await expect(
-        vault.connect(owner).setExitFeeBps(invalidFeeBps)
-      ).to.be.revertedWith("Fee exceeds maximum");
     });
   });
 
