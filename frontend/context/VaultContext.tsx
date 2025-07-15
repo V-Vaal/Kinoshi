@@ -27,8 +27,9 @@ export interface VaultContextType {
   userShares: bigint | null
   decimals: number | null
   previewDeposit: (amount: bigint) => Promise<bigint>
+  previewRedeem: (shares: bigint) => Promise<bigint>
   deposit: (amount: bigint) => Promise<void>
-  redeem: (shares: bigint) => Promise<void>
+  redeem: (shares: bigint, receiver: string, owner: string) => Promise<void>
   fetchVaultData: () => Promise<void>
 }
 
@@ -102,6 +103,21 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [])
 
+  // previewRedeem
+  const previewRedeem = useCallback(async (shares: bigint) => {
+    try {
+      const result = await readContract(wagmiConfig, {
+        abi: vaultAbi,
+        address: vaultAddress as `0x${string}`,
+        functionName: 'previewRedeem',
+        args: [shares],
+      })
+      return result as bigint
+    } catch (err) {
+      throw new Error('Erreur lors du previewRedeem')
+    }
+  }, [])
+
   // deposit
   const deposit = useCallback(
     async (amount: bigint) => {
@@ -120,13 +136,13 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
 
   // redeem
   const redeem = useCallback(
-    async (shares: bigint) => {
+    async (shares: bigint, receiver: string, owner: string) => {
       if (!address) throw new Error('Wallet non connecté')
       const hash = await writeContract(wagmiConfig, {
         abi: vaultAbi,
         address: vaultAddress as `0x${string}`,
         functionName: 'redeem',
-        args: [shares, address, address],
+        args: [shares, receiver, owner],
       })
       await waitForTransactionReceipt(wagmiConfig, { hash })
       await fetchVaultData()
@@ -139,6 +155,7 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
     userShares,
     decimals,
     previewDeposit,
+    previewRedeem,
     deposit,
     redeem,
     fetchVaultData,

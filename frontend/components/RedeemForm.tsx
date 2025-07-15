@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState } from 'react'
-import { parseUnits } from 'viem'
+import React, { useState, useEffect } from 'react'
+import { parseUnits, formatUnits } from 'viem'
 import { useAccount } from 'wagmi'
 import { useVault } from '@/context/VaultContext'
 import { Button, Input } from '@/components/ui'
@@ -9,28 +9,44 @@ import { toast } from 'sonner'
 
 const RedeemForm: React.FC = () => {
   const [shares, setShares] = useState('')
+  const [isEstimating, setIsEstimating] = useState(false)
+  const [previewAmount, setPreviewAmount] = useState<string | null>(null)
+  const [previewError, setPreviewError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const { isConnected } = useAccount()
-  const { redeem, decimals, userShares } = useVault()
 
-  const handleRedeem = async () => {
-    if (!shares || !decimals) return
+  const { address, isConnected } = useAccount()
+  const { redeem, previewRedeem, userShares, decimals } = useVault()
 
-    setIsLoading(true)
-    try {
-      const sharesBigInt = parseUnits(shares, decimals)
-      await redeem(sharesBigInt)
-      toast.success('Retrait effectué avec succès !')
-      setShares('')
-    } catch (error) {
-      console.error('Erreur lors du retrait:', error)
-      toast.error('Erreur lors du retrait. Veuillez réessayer.')
-    } finally {
-      setIsLoading(false)
+  // Estimation du montant à retirer
+  useEffect(() => {
+    const estimate = async () => {
+      if (!shares || !decimals || parseFloat(shares) <= 0) {
+        setPreviewAmount(null)
+        setPreviewError(null)
+        return
+      }
+      setIsEstimating(true)
+      setPreviewError(null)
+      try {
+        const sharesBigInt = parseUnits(shares, decimals)
+        const amount = await previewRedeem(sharesBigInt)
+        const formatted = formatUnits(amount, decimals)
+        const parts = formatted.split('.')
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+        const result =
+          parts.length > 1 ? `${parts[0]},${parts[1].slice(0, 2)}` : parts[0]
+        setPreviewAmount(result)
+      } catch (e) {
+        setPreviewError('Erreur lors de l’estimation')
+        setPreviewAmount(null)
+      } finally {
+        setIsEstimating(false)
+      }
     }
-  }
+    estimate()
+  }, [shares, decimals, previewRedeem])
 
-  // Validation : vérifier que l'utilisateur a assez de parts
+  // Validation
   const isValidShares = () => {
     if (!shares || !decimals || !userShares) return false
     try {
@@ -41,23 +57,59 @@ const RedeemForm: React.FC = () => {
     }
   }
 
+  const handleRedeem = async () => {
+    if (!shares || !decimals || !address) return
+    setIsLoading(true)
+    try {
+      const sharesBigInt = parseUnits(shares, decimals)
+      await redeem(sharesBigInt, address, address)
+      toast.success('Retrait effectué avec succès !')
+      setShares('')
+    } catch (error) {
+      console.error('Erreur lors du retrait:', error)
+      toast.error('Erreur lors du retrait. Veuillez réessayer.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const isDisabled = !isConnected || !isValidShares() || isLoading
 
   return (
-    <div className="flex gap-4 items-end">
-      <div className="flex-1">
-        <Input
-          type="number"
-          placeholder="Nombre de parts à retirer"
-          value={shares}
-          onChange={(e) => setShares(e.target.value)}
-          min="0"
-          step="0.01"
-        />
+    <div className="space-y-2">
+      <div className="flex gap-4 items-end">
+        <div className="flex-1">
+          <Input
+            type="number"
+            placeholder="Nombre de parts à retirer"
+            value={shares}
+            onChange={(e) => setShares(e.target.value)}
+            min="0"
+            step="0.01"
+          />
+        </div>
+        <Button onClick={handleRedeem} disabled={isDisabled} className="px-6">
+          {isLoading ? 'Retire...' : 'Retirer'}
+        </Button>
       </div>
-      <Button onClick={handleRedeem} disabled={isDisabled} className="px-6">
-        {isLoading ? 'Retire...' : 'Retirer'}
-      </Button>
+      {/* Estimation */}
+      {shares && parseFloat(shares) > 0 && (
+        <div className="text-sm">
+          {isEstimating ? (
+            <span className="text-[var(--kinoshi-text)]/70 font-sans font-medium">
+              Calcul de l’estimation...
+            </span>
+          ) : previewError ? (
+            <span className="text-red-500 font-sans font-medium">
+              {previewError}
+            </span>
+          ) : previewAmount ? (
+            <span className="text-[var(--kinoshi-primary)] font-sans font-medium">
+              Estimation du retrait : {previewAmount} USDC
+            </span>
+          ) : null}
+        </div>
+      )}
     </div>
   )
 }
