@@ -47,6 +47,7 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     event AllocationsUpdated(address indexed admin);
     event ExitFeeApplied(address indexed user, uint256 assets, uint256 fee);
     event ManagementFeeAccrued(address indexed receiver, uint256 shares);
+    event Allocated(address indexed token, uint256 amount);
 
     /**
      * @notice Constructeur du Vault
@@ -168,6 +169,30 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
 
         uint256 shares = super.deposit(assets, receiver);
         emit Deposited(receiver, assets);
+
+        // Allocation RWA : répartir les assets selon la stratégie active
+        for (uint256 i = 0; i < allocations.length; i++) {
+            AssetAllocation memory allocation = allocations[i];
+            if (!allocation.active) continue;
+            address token = allocation.token;
+            uint256 allocationAmount = (assets * allocation.weight) / 1e18;
+            // ⚠️ Si le token est l’asset natif du Vault (ex: mUSDC), ne pas mint à nouveau
+            if (token == asset()) continue;
+            // Ajustement des décimales : assets (mUSDC, 6) -> token (peut être 6, 8, 18)
+            uint8 tokenDecimals = registry.getTokenDecimals(token);
+            if (tokenDecimals > 6) {
+                allocationAmount = allocationAmount * (10 ** (tokenDecimals - 6));
+            } else if (tokenDecimals < 6) {
+                allocationAmount = allocationAmount / (10 ** (6 - tokenDecimals));
+            }
+            // Mint le token mock au Vault
+            (bool success, ) = token.call(
+                abi.encodeWithSignature("mint(address,uint256)", address(this), allocationAmount)
+            );
+            require(success, "Mint RWA failed");
+            emit Allocated(token, allocationAmount);
+        }
+
         return shares;
     }
 
