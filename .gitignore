@@ -1,6 +1,7 @@
 .env*
 context.md
 Plan Technique Détaillé v1.1.md
+plan dev front.md
 
 # sécurité et propreté
 *.md~          
