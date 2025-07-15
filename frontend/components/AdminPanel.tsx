@@ -3,11 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { useUser } from '@/context/UserContext'
 import { useTokenRegistry } from '@/context/TokenRegistryContext'
-import {
-  readContract,
-  writeContract,
-  waitForTransactionReceipt,
-} from 'wagmi/actions'
+import { readContract, writeContract } from 'wagmi/actions'
 import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
 import vaultAbiJson from '@/abis/Vault.abi.json'
 import { vaultAddress } from '@/constants'

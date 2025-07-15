@@ -66,7 +66,10 @@ const DepositForm: React.FC = () => {
 
   // Vérifier si l'utilisateur a un profil de risque
   useEffect(() => {
-    const savedProfile = localStorage.getItem('kinoshi-risk-profile')
+    let savedProfile: string | null = null
+    if (typeof window !== 'undefined') {
+      savedProfile = localStorage.getItem('kinoshi-risk-profile')
+    }
     if (savedProfile) {
       try {
         const profile = JSON.parse(savedProfile)

@@ -158,7 +158,10 @@ const RiskProfileForm: React.FC = () => {
 
   // Charger le profil depuis localStorage au montage
   useEffect(() => {
-    const savedProfile = localStorage.getItem('kinoshi-risk-profile')
+    let savedProfile: string | null = null
+    if (typeof window !== 'undefined') {
+      savedProfile = localStorage.getItem('kinoshi-risk-profile')
+    }
     if (savedProfile) {
       try {
         const profile = JSON.parse(savedProfile) as RiskProfile
@@ -166,7 +169,9 @@ const RiskProfileForm: React.FC = () => {
         setIsCompleted(true)
       } catch {
         // En cas d'erreur, on supprime le localStorage corrompu
-        localStorage.removeItem('kinoshi-risk-profile')
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('kinoshi-risk-profile')
+        }
       }
     }
   }, [])
@@ -195,10 +200,12 @@ const RiskProfileForm: React.FC = () => {
       }
 
       setRiskProfile(riskProfileData)
-      localStorage.setItem(
-        'kinoshi-risk-profile',
-        JSON.stringify(riskProfileData)
-      )
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(
+          'kinoshi-risk-profile',
+          JSON.stringify(riskProfileData)
+        )
+      }
       setIsCompleted(true)
     }
   }
@@ -214,7 +221,9 @@ const RiskProfileForm: React.FC = () => {
     setAnswers(new Array(questions.length).fill(-1))
     setRiskProfile(null)
     setIsCompleted(false)
-    localStorage.removeItem('kinoshi-risk-profile')
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('kinoshi-risk-profile')
+    }
   }
 
   const canProceed = answers[currentStep] > 0

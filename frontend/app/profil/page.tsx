@@ -37,7 +37,10 @@ const ProfilePage: React.FC = () => {
   const [showForm, setShowForm] = useState(false)
 
   useEffect(() => {
-    const savedProfile = localStorage.getItem('kinoshi-risk-profile')
+    let savedProfile: string | null = null
+    if (typeof window !== 'undefined') {
+      savedProfile = localStorage.getItem('kinoshi-risk-profile')
+    }
     if (savedProfile) {
       try {
         const profile = JSON.parse(savedProfile) as RiskProfile
@@ -45,7 +48,9 @@ const ProfilePage: React.FC = () => {
         setShowForm(false)
       } catch {
         // En cas d'erreur, on supprime le localStorage corrompu
-        localStorage.removeItem('kinoshi-risk-profile')
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('kinoshi-risk-profile')
+        }
         setShowForm(true)
       }
     } else {
@@ -54,7 +59,9 @@ const ProfilePage: React.FC = () => {
   }, [])
 
   const handleModifyProfile = () => {
-    localStorage.removeItem('kinoshi-risk-profile')
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('kinoshi-risk-profile')
+    }
     setRiskProfile(null)
     setShowForm(true)
   }

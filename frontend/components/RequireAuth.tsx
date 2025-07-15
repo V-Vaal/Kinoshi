@@ -14,7 +14,7 @@ const RequireAuth = ({ children, adminOnly, userOnly }: RequireAuthProps) => {
 
   useEffect(() => {
     if (!loadingRole && isVisitor) {
-      router.replace('/connexion')
+      router.replace('/unauthorized')
     }
   }, [isVisitor, loadingRole, router])
 

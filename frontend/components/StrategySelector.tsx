@@ -48,7 +48,10 @@ const STRATEGIES = [
 
 const getProfile = (): string | null => {
   if (typeof window === 'undefined') return null
-  const saved = localStorage.getItem('kinoshi-risk-profile')
+  let saved: string | null = null
+  if (typeof window !== 'undefined') {
+    saved = localStorage.getItem('kinoshi-risk-profile')
+  }
   if (!saved) return null
   try {
     const parsed = JSON.parse(saved)
