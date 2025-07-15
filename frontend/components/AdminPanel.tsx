@@ -24,6 +24,7 @@ import vaultAbiJson from '@/abis/Vault.abi.json'
 import { vaultAddress } from '@/constants'
 import type { Abi } from 'viem'
 import AdminOraclePriceEditor from './AdminOraclePriceEditor'
+import TreasuryManager from './TreasuryManager'
 
 const vaultAbi = (vaultAbiJson.abi ?? vaultAbiJson) as Abi
 
@@ -456,6 +457,7 @@ const AdminPanel: React.FC = () => {
       {/* Section des outils de démo */}
       <section style={{ marginTop: 48 }}>
         <AdminOraclePriceEditor />
+        <TreasuryManager />
       </section>
     </div>
   )

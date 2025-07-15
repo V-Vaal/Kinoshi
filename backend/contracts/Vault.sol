@@ -38,6 +38,9 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     // Adresse du receiver des frais de gestion
     address public feeReceiver;
 
+    // Solde de la trésorerie accumulée via les frais de retrait
+    uint256 public treasuryBalance;
+
     // Gestion des rôles
     mapping(address => bool) public isAdmin;
     mapping(address => bool) public isWhitelisted;
@@ -48,6 +51,7 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     event ExitFeeApplied(address indexed user, uint256 assets, uint256 fee);
     event ManagementFeeAccrued(address indexed receiver, uint256 shares);
     event Allocated(address indexed token, uint256 amount);
+    event TreasuryWithdrawn(address indexed to, uint256 amount);
 
     /**
      * @notice Constructeur du Vault
@@ -238,13 +242,27 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         // Transférer les assets après frais au receiver
         IERC20(asset()).transfer(receiver, assetsAfterFee);
         
-        // Transférer les frais au treasury
+        // Transférer les frais au treasury et incrémenter treasuryBalance
         if (fee > 0) {
             IERC20(asset()).transfer(treasury, fee);
+            treasuryBalance += fee;
             emit ExitFeeApplied(owner, assets, fee);
         }
         
         return assetsAfterFee;
+    }
+
+    /**
+     * @notice Permet à un admin de retirer les fonds de la trésorerie
+     * @param to Adresse de destination
+     * @param amount Montant à transférer
+     */
+    function withdrawTreasury(address to, uint256 amount) external onlyAdmin {
+        require(to != address(0), "Invalid address");
+        require(amount <= treasuryBalance, "Insufficient funds");
+        treasuryBalance -= amount;
+        IERC20(asset()).transfer(to, amount);
+        emit TreasuryWithdrawn(to, amount);
     }
 
     /**
