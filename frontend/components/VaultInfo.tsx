@@ -8,6 +8,7 @@ import {
   KinoshiCardHeader,
   KinoshiCardTitle,
   KinoshiCardContent,
+  KinoshiBadge,
 } from '@/components/ui'
 
 interface VaultInfoProps {
@@ -17,86 +18,64 @@ interface VaultInfoProps {
 const VaultInfo: React.FC<VaultInfoProps> = ({ className }) => {
   const { totalAssets, userShares, decimals } = useVault()
 
-  // Fonction pour formater les valeurs bigint en string lisible
+  // Skeleton simple
+  const Skeleton = () => (
+    <div className="animate-pulse h-6 bg-gray-200 rounded w-32" />
+  )
+
+  // Formattage
   const formatValue = (
     value: bigint | null,
     decimals: number | null
   ): string => {
-    if (value === null || decimals === null) {
-      return 'Non disponible'
-    }
-
+    if (value === null || decimals === null) return '—'
     try {
       const formatted = formatUnits(value, decimals)
-      // Ajoute des espaces pour les milliers et limite à 2 décimales
       const parts = formatted.split('.')
       parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
       const result =
         parts.length > 1 ? `${parts[0]},${parts[1].slice(0, 2)}` : parts[0]
       return `${result} USDC`
     } catch {
-      return 'Erreur de formatage'
+      return 'Erreur'
     }
   }
 
+  // Badge démo (à adapter selon logique réelle)
+  const isDemo = true
+
   return (
     <KinoshiCard variant="outlined" className={className}>
-      <KinoshiCardHeader>
-        <KinoshiCardTitle>Informations du Vault</KinoshiCardTitle>
+      <KinoshiCardHeader className="flex flex-row items-center gap-2">
+        <KinoshiCardTitle>Votre investissement</KinoshiCardTitle>
+        {isDemo && (
+          <KinoshiBadge variant="warning">Prix fictif (démo)</KinoshiBadge>
+        )}
       </KinoshiCardHeader>
       <KinoshiCardContent>
-        <div className="space-y-6">
-          {/* Tableau récapitulatif */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--kinoshi-border)]/30">
-                  <th className="text-left py-2 font-serif font-extrabold text-[var(--kinoshi-text)]">
-                    Métrique
-                  </th>
-                  <th className="text-right py-2 font-serif font-extrabold text-[var(--kinoshi-text)]">
-                    Valeur
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="space-y-2">
-                <tr className="border-b border-[var(--kinoshi-border)]/20">
-                  <td className="py-3 font-sans font-medium text-[var(--kinoshi-text)]/90">
-                    Total des actifs
-                  </td>
-                  <td className="py-3 text-right font-mono font-semibold text-[var(--kinoshi-primary)]">
-                    {formatValue(totalAssets, decimals)}
-                  </td>
-                </tr>
-                <tr className="border-b border-[var(--kinoshi-border)]/20">
-                  <td className="py-3 font-sans font-medium text-[var(--kinoshi-text)]/90">
-                    Vos parts
-                  </td>
-                  <td className="py-3 text-right font-mono font-semibold text-[var(--kinoshi-text)]">
-                    {formatValue(userShares, decimals)}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 font-sans font-medium text-[var(--kinoshi-text)]/90">
-                    Décimales (debug)
-                  </td>
-                  <td className="py-3 text-right font-mono font-semibold text-[var(--kinoshi-text)]">
-                    {decimals !== null ? decimals : 'Non disponible'}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+        <div className="flex flex-col gap-4">
+          <div>
+            <div className="text-xs font-sans text-[var(--kinoshi-text)]/70 mb-1">
+              Montant total investi
+            </div>
+            <div className="text-2xl font-serif font-extrabold text-[var(--kinoshi-primary)]">
+              {totalAssets === null || decimals === null ? (
+                <Skeleton />
+              ) : (
+                formatValue(totalAssets, decimals)
+              )}
+            </div>
           </div>
-
-          {/* Section dernier rafraîchissement */}
-          <div className="pt-4 border-t border-[var(--kinoshi-border)]/30">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-sans font-medium text-[var(--kinoshi-text)]/70">
-                Dernier rafraîchissement
-              </span>
-              <span className="text-sm font-mono text-[var(--kinoshi-text)]/80">
-                {new Date().toLocaleString('fr-FR')}
-              </span>
+          <div>
+            <div className="text-xs font-sans text-[var(--kinoshi-text)]/70 mb-1">
+              Vos parts détenues
+            </div>
+            <div className="text-xl font-mono font-semibold text-[var(--kinoshi-text)]">
+              {userShares === null || decimals === null ? (
+                <Skeleton />
+              ) : (
+                formatValue(userShares, decimals)
+              )}
             </div>
           </div>
         </div>
