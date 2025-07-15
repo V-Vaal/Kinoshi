@@ -23,6 +23,7 @@ import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
 import vaultAbiJson from '@/abis/Vault.abi.json'
 import { vaultAddress } from '@/constants'
 import type { Abi } from 'viem'
+import AdminOraclePriceEditor from './AdminOraclePriceEditor'
 
 const vaultAbi = (vaultAbiJson.abi ?? vaultAbiJson) as Abi
 
@@ -451,6 +452,11 @@ const AdminPanel: React.FC = () => {
           )}
         </KinoshiCardContent>
       </KinoshiCard>
+
+      {/* Section des outils de démo */}
+      <section style={{ marginTop: 48 }}>
+        <AdminOraclePriceEditor />
+      </section>
     </div>
   )
 }
