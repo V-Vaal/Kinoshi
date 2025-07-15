@@ -30,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased dark`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}
       >
         <RainbowKitAndWagmiProvider>
           <VaultProvider>

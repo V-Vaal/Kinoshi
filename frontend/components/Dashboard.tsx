@@ -3,9 +3,17 @@
 import React from 'react'
 import { formatUnits } from 'viem'
 import { useVault } from '@/context/VaultContext'
-import { Button } from './ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
-import { RefreshCw } from 'lucide-react'
+import {
+  KinoshiCard,
+  KinoshiCardHeader,
+  KinoshiCardTitle,
+  KinoshiCardContent,
+  KinoshiButton,
+  KinoshiBadge,
+  Progress,
+  Separator,
+} from '@/components/ui'
+import { RefreshCw, TrendingUp, Users, Coins, Shield } from 'lucide-react'
 
 const Dashboard: React.FC = () => {
   const { totalAssets, userShares, decimals, fetchVaultData } = useVault()
@@ -41,89 +49,126 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4">
-      <Card className="shadow-lg">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-2xl font-bold text-gray-800">
-            Tableau de bord
-          </CardTitle>
-          <Button
+    <div className="w-full space-y-6">
+      {/* Header Card */}
+      <KinoshiCard variant="elevated">
+        <KinoshiCardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <KinoshiCardTitle>Tableau de bord Kinoshi</KinoshiCardTitle>
+              <p className="text-[var(--kinoshi-text)]/90 font-sans font-medium mt-1">
+                Votre portefeuille d'investissement décentralisé
+              </p>
+            </div>
+            <KinoshiBadge variant="success">
+              <Shield className="w-3 h-3 mr-1" />
+              Actif
+            </KinoshiBadge>
+          </div>
+          <KinoshiButton
             onClick={handleRefresh}
             variant="outline"
             size="sm"
-            className="flex items-center gap-2 hover:bg-gray-50"
+            className="mt-4 w-fit"
           >
             <RefreshCw className="h-4 w-4" />
             Rafraîchir
-          </Button>
-        </CardHeader>
+          </KinoshiButton>
+        </KinoshiCardHeader>
+      </KinoshiCard>
 
-        <CardContent className="space-y-6">
-          {/* Total des actifs */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200">
-              <h3 className="text-lg font-semibold text-blue-800 mb-2">
-                Total des actifs
-              </h3>
-              <p className="text-3xl font-bold text-blue-900">
-                {formatValue(totalAssets, decimals)}
-              </p>
-              <p className="text-sm text-blue-600 mt-1">
-                Valeur totale sous gestion
-              </p>
-            </div>
-
-            {/* Parts de l'utilisateur */}
-            <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 rounded-lg border border-green-200">
-              <h3 className="text-lg font-semibold text-green-800 mb-2">
-                Vos parts
-              </h3>
-              <p className="text-3xl font-bold text-green-900">
-                {formatValue(userShares, decimals)}
-              </p>
-              <p className="text-sm text-green-600 mt-1">Parts détenues</p>
-            </div>
-          </div>
-
-          {/* Informations supplémentaires */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="text-md font-semibold text-gray-700 mb-3">
-              Informations techniques
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <span className="text-gray-600">Décimales du token :</span>
-                <span className="ml-2 font-mono font-semibold">
-                  {decimals !== null ? decimals : 'Non disponible'}
-                </span>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <KinoshiCard variant="default">
+          <KinoshiCardContent className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-[var(--kinoshi-primary)]/10 rounded-lg">
+                <Coins className="w-5 h-5 text-[var(--kinoshi-primary)]" />
               </div>
               <div>
-                <span className="text-gray-600">Total Assets (raw) :</span>
-                <span className="ml-2 font-mono text-xs">
-                  {totalAssets !== null
-                    ? totalAssets.toString()
-                    : 'Non disponible'}
-                </span>
+                <h3 className="font-serif font-extrabold text-[var(--kinoshi-text)]">
+                  Total des actifs
+                </h3>
+                <p className="text-sm text-[var(--kinoshi-text)]/90 font-sans font-medium">
+                  Valeur totale sous gestion
+                </p>
+              </div>
+            </div>
+            <div className="text-3xl font-serif font-extrabold text-[var(--kinoshi-primary)] mb-2">
+              {formatValue(totalAssets, decimals)}
+            </div>
+            <Progress value={100} className="h-2" />
+          </KinoshiCardContent>
+        </KinoshiCard>
+
+        <KinoshiCard variant="default">
+          <KinoshiCardContent className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-[var(--kinoshi-gold)]/20 rounded-lg">
+                <Users className="w-5 h-5 text-[var(--kinoshi-text)]" />
               </div>
               <div>
-                <span className="text-gray-600">User Shares (raw) :</span>
-                <span className="ml-2 font-mono text-xs">
-                  {userShares !== null
-                    ? userShares.toString()
-                    : 'Non disponible'}
-                </span>
+                <h3 className="font-serif font-extrabold text-[var(--kinoshi-text)]">
+                  Vos parts
+                </h3>
+                <p className="text-sm text-[var(--kinoshi-text)]/90 font-sans font-medium">
+                  Parts détenues
+                </p>
+              </div>
+            </div>
+            <div className="text-3xl font-serif font-extrabold text-[var(--kinoshi-text)] mb-2">
+              {formatValue(userShares, decimals)}
+            </div>
+            <Progress value={75} className="h-2" />
+          </KinoshiCardContent>
+        </KinoshiCard>
+      </div>
+
+      {/* Technical Info Card */}
+      <KinoshiCard variant="outlined">
+        <KinoshiCardHeader>
+          <KinoshiCardTitle className="text-lg">
+            Informations techniques
+          </KinoshiCardTitle>
+        </KinoshiCardHeader>
+        <KinoshiCardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+            <div className="space-y-2">
+              <div className="text-[var(--kinoshi-text)]/90 font-sans font-medium">
+                Décimales du token
+              </div>
+              <div className="font-mono font-medium text-[var(--kinoshi-text)]">
+                {decimals !== null ? decimals : 'Non disponible'}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="text-[var(--kinoshi-text)]/90 font-sans font-medium">
+                Total Assets (raw)
+              </div>
+              <div className="font-mono text-xs text-[var(--kinoshi-text)] break-all">
+                {totalAssets !== null
+                  ? totalAssets.toString()
+                  : 'Non disponible'}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="text-[var(--kinoshi-text)]/90 font-sans font-medium">
+                User Shares (raw)
+              </div>
+              <div className="font-mono text-xs text-[var(--kinoshi-text)] break-all">
+                {userShares !== null ? userShares.toString() : 'Non disponible'}
               </div>
             </div>
           </div>
+        </KinoshiCardContent>
+      </KinoshiCard>
 
-          {/* État de connexion */}
-          <div className="text-center">
-            <p className="text-sm text-gray-500">
-              Dernière mise à jour : {new Date().toLocaleTimeString('fr-FR')}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Footer */}
+      <div className="text-center">
+        <p className="text-sm text-[var(--kinoshi-text)]/90 font-sans font-medium">
+          Dernière mise à jour : {new Date().toLocaleTimeString('fr-FR')}
+        </p>
+      </div>
     </div>
   )
 }
