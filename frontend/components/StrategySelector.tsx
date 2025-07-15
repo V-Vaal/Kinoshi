@@ -1,135 +1,149 @@
 'use client'
+import React, { useEffect, useState } from 'react'
+import { Info } from 'lucide-react'
+import { Tooltip } from 'react-tooltip'
 
-import React from 'react'
-import { formatUnits } from 'viem'
-import { useTokenRegistry } from '@/context/TokenRegistryContext'
-import {
-  KinoshiCard,
-  KinoshiCardHeader,
-  KinoshiCardTitle,
-  KinoshiCardContent,
-} from '@/components/ui'
+const STRATEGIES = [
+  {
+    key: 'defensif',
+    label: 'Défensif',
+    allocations: [
+      { asset: "Obligations d'État", percent: 60 },
+      { asset: 'Or (mPAXG)', percent: 30 },
+      { asset: 'Cash (stables)', percent: 10 },
+    ],
+    color: 'bg-blue-100 border-blue-300',
+    text: 'text-blue-900',
+    badge: 'bg-blue-200 text-blue-900 border border-blue-400',
+    disabled: true,
+  },
+  {
+    key: 'equilibree',
+    label: 'Équilibrée',
+    allocations: [
+      { asset: 'mUSDS', percent: 35 },
+      { asset: 'mBcSPX', percent: 30 },
+      { asset: 'mPAXG', percent: 20 },
+      { asset: 'mBTC', percent: 15 },
+    ],
+    color: 'bg-green-100 border-green-300',
+    text: 'text-green-900',
+    badge: 'bg-green-200 text-green-900 border border-green-400',
+    disabled: false,
+  },
+  {
+    key: 'agressif',
+    label: 'Agressif',
+    allocations: [
+      { asset: 'mBTC', percent: 50 },
+      { asset: 'Actions US', percent: 30 },
+      { asset: 'Stables', percent: 20 },
+    ],
+    color: 'bg-red-100 border-red-300',
+    text: 'text-red-900',
+    badge: 'bg-red-200 text-red-900 border border-red-400',
+    disabled: true,
+  },
+]
 
-interface StrategySelectorProps {
-  className?: string
+const getProfile = (): string | null => {
+  if (typeof window === 'undefined') return null
+  const saved = localStorage.getItem('kinoshi-risk-profile')
+  if (!saved) return null
+  try {
+    const parsed = JSON.parse(saved)
+    return parsed.profile || null
+  } catch {
+    return null
+  }
 }
 
-const StrategySelector: React.FC<StrategySelectorProps> = ({ className }) => {
-  const { registeredTokens, allocations, isLoading } = useTokenRegistry()
+const StrategySelector: React.FC = () => {
+  const [profile, setProfile] = useState<string | null>(null)
 
-  // Fonction pour calculer le pourcentage de pondération
-  const getWeightPercentage = (weight: bigint): string => {
-    const percentage = Number(formatUnits(weight, 18)) * 100
-    return `${percentage.toFixed(1)}%`
-  }
+  useEffect(() => {
+    setProfile(getProfile())
+  }, [])
 
-  // Fonction pour trouver l'allocation d'un token
-  const getAllocationForToken = (tokenAddress: string) => {
-    return allocations.find(
-      (allocation) =>
-        allocation.token.toLowerCase() === tokenAddress.toLowerCase()
-    )
-  }
-
-  // Skeleton pour le loading
-  const Skeleton = () => (
-    <div className="animate-pulse">
-      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
-      <div className="h-4 bg-gray-200 rounded w-1/2" />
-    </div>
-  )
-
-  if (isLoading) {
-    return (
-      <KinoshiCard variant="outlined" className={className}>
-        <KinoshiCardHeader>
-          <KinoshiCardTitle>Stratégie d'investissement</KinoshiCardTitle>
-        </KinoshiCardHeader>
-        <KinoshiCardContent>
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} />
-            ))}
-          </div>
-        </KinoshiCardContent>
-      </KinoshiCard>
-    )
-  }
+  const recommendedKey = profile
+    ? profile.toLowerCase() === 'conservateur'
+      ? 'defensif'
+      : profile.toLowerCase() === 'agressif'
+        ? 'agressif'
+        : 'equilibree'
+    : null
 
   return (
-    <KinoshiCard variant="outlined" className={className}>
-      <KinoshiCardHeader>
-        <KinoshiCardTitle>Stratégie d'investissement</KinoshiCardTitle>
-      </KinoshiCardHeader>
-      <KinoshiCardContent>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--kinoshi-border)]/30">
-                <th className="text-left py-2 font-serif font-extrabold text-[var(--kinoshi-text)]">
-                  Token
-                </th>
-                <th className="text-right py-2 font-serif font-extrabold text-[var(--kinoshi-text)]">
-                  Pondération
-                </th>
-                <th className="text-center py-2 font-serif font-extrabold text-[var(--kinoshi-text)]">
-                  Statut
-                </th>
-              </tr>
-            </thead>
-            <tbody className="space-y-2">
-              {registeredTokens.map((token) => {
-                const allocation = getAllocationForToken(token.tokenAddress)
-                const isActive = allocation?.active ?? false
-                const weight = allocation?.weight ?? 0n
-
-                return (
-                  <tr
-                    key={token.tokenAddress}
-                    className={`border-b border-[var(--kinoshi-border)]/20 ${
-                      !isActive
-                        ? 'opacity-50 pointer-events-none select-none'
-                        : ''
-                    }`}
-                  >
-                    <td className="py-3 font-sans font-medium text-[var(--kinoshi-text)]/90">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`font-semibold ${!isActive ? 'text-[var(--kinoshi-text)]/60' : 'text-[var(--kinoshi-text)]'}`}
-                        >
-                          {token.symbol}
-                        </span>
-                        {!isActive && (
-                          <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">
-                            Désactivé
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3 text-right font-mono font-semibold text-[var(--kinoshi-primary)]">
-                      {weight > 0n ? getWeightPercentage(weight) : '—'}
-                    </td>
-                    <td className="py-3 text-center">
-                      <span
-                        className={`inline-block w-2 h-2 rounded-full ${
-                          isActive ? 'bg-green-500' : 'bg-red-500'
-                        }`}
-                      />
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+    <div className="w-full max-w-4xl mx-auto mt-8">
+      <div className="mb-6 text-center">
+        <div className="text-lg font-semibold mb-2">
+          Selon votre profil de risque, la stratégie recommandée est :
+          <span className="ml-2 font-bold">
+            {profile ? profile : 'Non défini'}
+          </span>
         </div>
-
-        {registeredTokens.length === 0 && (
-          <div className="text-center py-8 text-[var(--kinoshi-text)]/70">
-            Aucun token enregistré
-          </div>
-        )}
-      </KinoshiCardContent>
-    </KinoshiCard>
+        <div className="text-sm text-[var(--kinoshi-text)]/80">
+          Pour la démonstration, seule la stratégie{' '}
+          <span className="font-bold">Équilibrée</span> est disponible.
+        </div>
+      </div>
+      <div className="flex flex-col md:flex-row gap-6 justify-center">
+        {STRATEGIES.map((strat) => {
+          const isActive = strat.key === 'equilibree'
+          const isRecommended = strat.key === recommendedKey
+          return (
+            <div
+              key={strat.key}
+              className={`relative flex-1 min-w-[220px] max-w-xs ${strat.color} rounded-xl border shadow-md p-5 ${strat.disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+              data-tooltip-id={
+                strat.disabled ? `tooltip-${strat.key}` : undefined
+              }
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <span
+                  className={`font-serif text-xl font-extrabold ${strat.text}`}
+                >
+                  {strat.label}
+                </span>
+                {isActive && (
+                  <span
+                    className={`ml-2 px-2 py-1 rounded-full text-xs font-bold shadow ${strat.badge}`}
+                  >
+                    Stratégie active
+                  </span>
+                )}
+                {isRecommended && (
+                  <span className="ml-2 px-2 py-1 rounded-full text-xs font-bold shadow bg-sky-200 text-sky-900 border border-sky-400">
+                    Stratégie recommandée
+                  </span>
+                )}
+                {strat.disabled && (
+                  <Info className="w-4 h-4 text-gray-400 ml-1" />
+                )}
+              </div>
+              <ul className="mt-2 space-y-1">
+                {strat.allocations.map((a, i) => (
+                  <li
+                    key={i}
+                    className="flex justify-between text-sm font-mono"
+                  >
+                    <span>{a.asset}</span>
+                    <span>{a.percent}%</span>
+                  </li>
+                ))}
+              </ul>
+              {strat.disabled && (
+                <Tooltip
+                  id={`tooltip-${strat.key}`}
+                  place="top"
+                  content="Indisponible pour cette version"
+                />
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 

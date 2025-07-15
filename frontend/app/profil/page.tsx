@@ -11,6 +11,7 @@ import {
 } from '@/components/ui'
 import RequireAuth from '@/components/RequireAuth'
 import MintMockUSDC from '@/components/MintMockUSDC'
+import StrategySelector from '@/components/StrategySelector'
 
 interface RiskProfile {
   score: number
@@ -108,6 +109,7 @@ const ProfilePage: React.FC = () => {
               </div>
             </div>
             <MintMockUSDC />
+            <StrategySelector />
           </KinoshiCardContent>
         </KinoshiCard>
       </div>
