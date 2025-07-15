@@ -303,7 +303,8 @@ const AdminPanel: React.FC = () => {
                           onChange={(e) =>
                             updateAllocation(
                               allocations.findIndex(
-                                (a) => a.tokenAddress === allocation.tokenAddress
+                                (a) =>
+                                  a.tokenAddress === allocation.tokenAddress
                               ),
                               'active',
                               e.target.checked
@@ -322,7 +323,8 @@ const AdminPanel: React.FC = () => {
                           onChange={(e) =>
                             updateAllocation(
                               allocations.findIndex(
-                                (a) => a.tokenAddress === allocation.tokenAddress
+                                (a) =>
+                                  a.tokenAddress === allocation.tokenAddress
                               ),
                               'weight',
                               parseFloat(e.target.value) || 0

@@ -7,10 +7,11 @@ import { useVault } from '@/context/VaultContext'
 import { Button, Input } from '@/components/ui'
 import { toast } from 'sonner'
 import Alert from './Alert'
-import { writeContract, waitForTransactionReceipt } from 'wagmi/actions'
+import { writeContract } from 'wagmi/actions'
 import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
 import vaultAbiJson from '@/abis/Vault.abi.json'
 import { vaultAddress } from '@/constants'
+import { useWaitForTransactionReceipt } from 'wagmi'
 
 const vaultAbi = (vaultAbiJson.abi ?? vaultAbiJson) as readonly unknown[]
 const errorMessages: Record<string, string> = {
@@ -26,9 +27,32 @@ const RedeemForm: React.FC = () => {
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [contractError, setContractError] = useState<string | null>(null)
+  const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined)
 
   const { address, isConnected } = useAccount()
   const { previewRedeem, userShares, decimals } = useVault()
+
+  const {
+    isLoading: isTxLoading,
+    isSuccess: isTxSuccess,
+    isError: isTxError,
+    error: txError,
+  } = useWaitForTransactionReceipt({
+    hash: txHash,
+    query: { enabled: !!txHash },
+  })
+
+  useEffect(() => {
+    if (isTxSuccess) {
+      toast.success('✅ Transaction confirmée !')
+      setShares('')
+      setTxHash(undefined)
+    }
+    if (isTxError) {
+      setContractError('Erreur lors de la confirmation de la transaction.')
+      setTxHash(undefined)
+    }
+  }, [isTxSuccess, isTxError])
 
   // Estimation du montant à retirer
   useEffect(() => {
@@ -82,13 +106,18 @@ const RedeemForm: React.FC = () => {
         functionName: 'redeem',
         args: [sharesBigInt, address, address],
       })
-      await waitForTransactionReceipt(wagmiConfig, { hash })
-      toast.success('Retrait effectué avec succès !')
-      setShares('')
+      setTxHash(hash as `0x${string}`)
     } catch (error) {
       let message = 'Erreur lors du retrait. Veuillez réessayer.'
-      if (typeof error === 'object' && error && 'message' in error && typeof (error as { message?: unknown }).message === 'string') {
-        const match = /Custom error: (\w+)/.exec((error as { message: string }).message)
+      if (
+        typeof error === 'object' &&
+        error &&
+        'message' in error &&
+        typeof (error as { message?: unknown }).message === 'string'
+      ) {
+        const match = /Custom error: (\w+)/.exec(
+          (error as { message: string }).message
+        )
         if (match && errorMessages[match[1]]) {
           message = errorMessages[match[1]]
         }
@@ -99,7 +128,8 @@ const RedeemForm: React.FC = () => {
     }
   }
 
-  const isDisabled = !isConnected || !isValidShares() || isLoading
+  const isDisabled =
+    !isConnected || !isValidShares() || isLoading || isTxLoading
 
   return (
     <div className="space-y-2">
@@ -115,7 +145,33 @@ const RedeemForm: React.FC = () => {
           />
         </div>
         <Button onClick={handleRedeem} disabled={isDisabled} className="px-6">
-          {isLoading ? 'Retire...' : 'Retirer'}
+          {isLoading || isTxLoading ? (
+            <span className="flex items-center gap-2">
+              <svg
+                className="animate-spin h-4 w-4 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v8z"
+                ></path>
+              </svg>
+              Transaction en cours…
+            </span>
+          ) : (
+            'Retirer'
+          )}
         </Button>
       </div>
       {/* Estimation */}
@@ -137,6 +193,12 @@ const RedeemForm: React.FC = () => {
         </div>
       )}
       {contractError && <Alert message={contractError} className="mt-2" />}
+      {isTxError && txError && (
+        <Alert
+          message={txError.message || 'Erreur lors de la transaction.'}
+          className="mt-2"
+        />
+      )}
       <Alert
         message="⚠️ Le résultat de previewDeposit() est estimatif et peut varier selon l’exécution réelle."
         className="mt-4"
