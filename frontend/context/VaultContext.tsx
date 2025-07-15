@@ -15,7 +15,7 @@ import {
   waitForTransactionReceipt,
 } from 'wagmi/actions'
 import type { Abi } from 'viem'
-import { wagmiConfig } from '@/wagmi.config'
+import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
 import vaultAbiJson from '@/abis/Vault.abi.json'
 import { vaultAddress } from '@/constants'
 
@@ -112,7 +112,7 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
         functionName: 'deposit',
         args: [amount, address],
       })
-      await waitForTransactionReceipt(wagmiConfig, { hash, chainId })
+      await waitForTransactionReceipt(wagmiConfig, { hash })
       await fetchVaultData()
     },
     [address, fetchVaultData, chainId]
@@ -128,7 +128,7 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
         functionName: 'redeem',
         args: [shares, address, address],
       })
-      await waitForTransactionReceipt(wagmiConfig, { hash, chainId })
+      await waitForTransactionReceipt(wagmiConfig, { hash })
       await fetchVaultData()
     },
     [address, fetchVaultData, chainId]

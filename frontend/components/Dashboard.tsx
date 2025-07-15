@@ -35,8 +35,8 @@ const Dashboard: React.FC = () => {
   const handleRefresh = async () => {
     try {
       await fetchVaultData()
-    } catch (error) {
-      console.error('Erreur lors du rafraîchissement:', error)
+    } catch {
+      console.error('Erreur lors du rafraîchissement')
     }
   }
 

@@ -2,10 +2,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { VaultProvider } from '@/context/VaultContext'
-import { WagmiProvider } from 'wagmi'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { RainbowKitProvider } from '@rainbow-me/rainbowkit'
-import { wagmiConfig } from '@/wagmi.config'
+import RainbowKitAndWagmiProvider from '@/components/RainbowKitAndWagmiProvider'
 import Layout from '@/components/shared/Layout'
 import { Toaster } from '@/components/ui/sonner'
 
@@ -25,8 +22,6 @@ export const metadata: Metadata = {
     'Investissez simplement : des actifs réels et choisis pour un placement réfléchi.',
 }
 
-const queryClient = new QueryClient()
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -37,15 +32,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased dark`}
       >
-        <WagmiProvider config={wagmiConfig}>
-          <QueryClientProvider client={queryClient}>
-            <RainbowKitProvider>
-              <VaultProvider>
-                <Layout>{children}</Layout>
-              </VaultProvider>
-            </RainbowKitProvider>
-          </QueryClientProvider>
-        </WagmiProvider>
+        <RainbowKitAndWagmiProvider>
+          <VaultProvider>
+            <Layout>{children}</Layout>
+          </VaultProvider>
+        </RainbowKitAndWagmiProvider>
         <Toaster />
       </body>
     </html>
