@@ -10,6 +10,7 @@ import {
   KinoshiButton,
 } from '@/components/ui'
 import RequireAuth from '@/components/RequireAuth'
+import MintMockUSDC from '@/components/MintMockUSDC'
 
 interface RiskProfile {
   score: number
@@ -106,6 +107,7 @@ const ProfilePage: React.FC = () => {
                 </KinoshiButton>
               </div>
             </div>
+            <MintMockUSDC />
           </KinoshiCardContent>
         </KinoshiCard>
       </div>
