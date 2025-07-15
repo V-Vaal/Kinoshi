@@ -4,8 +4,16 @@ import React, { useState, useEffect } from 'react'
 import { parseUnits, formatUnits } from 'viem'
 import { useAccount } from 'wagmi'
 import { useVault } from '@/context/VaultContext'
-import { Button, Input } from '@/components/ui'
+import {
+  Button,
+  Input,
+  KinoshiCard,
+  KinoshiCardContent,
+  KinoshiCardHeader,
+  KinoshiCardTitle,
+} from '@/components/ui'
 import { toast } from 'sonner'
+import Link from 'next/link'
 
 const DepositForm: React.FC = () => {
   const [amount, setAmount] = useState('')
@@ -13,9 +21,25 @@ const DepositForm: React.FC = () => {
   const [previewShares, setPreviewShares] = useState<string | null>(null)
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState<string | null>(null)
+  const [hasRiskProfile, setHasRiskProfile] = useState<boolean | null>(null)
 
   const { isConnected } = useAccount()
   const { deposit, previewDeposit, decimals } = useVault()
+
+  // Vérifier si l'utilisateur a un profil de risque
+  useEffect(() => {
+    const savedProfile = localStorage.getItem('kinoshi-risk-profile')
+    if (savedProfile) {
+      try {
+        const profile = JSON.parse(savedProfile)
+        setHasRiskProfile(!!profile && profile.score && profile.profile)
+      } catch {
+        setHasRiskProfile(false)
+      }
+    } else {
+      setHasRiskProfile(false)
+    }
+  }, [])
 
   // useEffect pour prévisualiser le dépôt quand le montant change
   useEffect(() => {
@@ -71,6 +95,44 @@ const DepositForm: React.FC = () => {
   }
 
   const isDisabled = !isConnected || !amount || isLoading
+
+  // Si l'utilisateur n'a pas de profil de risque, afficher le message d'alerte
+  if (hasRiskProfile === false) {
+    return (
+      <KinoshiCard variant="outlined" className="max-w-2xl mx-auto">
+        <KinoshiCardHeader>
+          <KinoshiCardTitle className="flex items-center gap-2">
+            ⚠️ Vous devez d'abord définir votre profil investisseur
+          </KinoshiCardTitle>
+        </KinoshiCardHeader>
+        <KinoshiCardContent className="space-y-4">
+          <p className="text-[var(--kinoshi-text)]/90 font-sans font-medium">
+            Pour pouvoir déposer des fonds, vous devez d'abord compléter votre
+            profil de risque. Cela nous permet de vous proposer les stratégies
+            d'investissement les plus adaptées à votre profil.
+          </p>
+          <div className="flex justify-center">
+            <Link href="/profil">
+              <Button className="px-6">Définir mon profil</Button>
+            </Link>
+          </div>
+        </KinoshiCardContent>
+      </KinoshiCard>
+    )
+  }
+
+  // Si on est en train de vérifier le profil, afficher un chargement
+  if (hasRiskProfile === null) {
+    return (
+      <div className="space-y-4">
+        <div className="text-center">
+          <p className="text-[var(--kinoshi-text)]/70 font-sans font-medium">
+            Vérification de votre profil...
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
