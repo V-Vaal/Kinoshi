@@ -5,6 +5,7 @@ import { useTokenRegistry } from '@/context/TokenRegistryContext'
 import { useAccount, useBalance } from 'wagmi'
 import RWABreakdown from './RWABreakdown'
 import WithdrawPreview from './WithdrawPreview'
+import WithdrawPanel from './WithdrawPanel'
 import { Button } from './ui/button'
 
 const UserDashboard: React.FC = () => {
@@ -70,7 +71,11 @@ const UserDashboard: React.FC = () => {
           <h3>Répartition de vos actifs</h3>
           <RWABreakdown />
         </div>
-        {/* Bloc 5 : Bouton Déposer */}
+        {/* Bloc 5 : Retrait */}
+        <div className="dashboard-block">
+          <WithdrawPanel />
+        </div>
+        {/* Bloc 6 : Bouton Déposer */}
         <div className="dashboard-block">
           <Button onClick={() => (window.location.href = '/depot')}>
             Déposer
