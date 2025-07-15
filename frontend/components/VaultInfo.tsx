@@ -10,7 +10,11 @@ import {
   KinoshiCardContent,
 } from '@/components/ui'
 
-const VaultInfo: React.FC = () => {
+interface VaultInfoProps {
+  className?: string
+}
+
+const VaultInfo: React.FC<VaultInfoProps> = ({ className }) => {
   const { totalAssets, userShares, decimals } = useVault()
 
   // Fonction pour formater les valeurs bigint en string lisible
@@ -36,7 +40,7 @@ const VaultInfo: React.FC = () => {
   }
 
   return (
-    <KinoshiCard variant="outlined">
+    <KinoshiCard variant="outlined" className={className}>
       <KinoshiCardHeader>
         <KinoshiCardTitle>Informations du Vault</KinoshiCardTitle>
       </KinoshiCardHeader>
