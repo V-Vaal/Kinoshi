@@ -36,7 +36,7 @@ const RedeemForm: React.FC = () => {
         const result =
           parts.length > 1 ? `${parts[0]},${parts[1].slice(0, 2)}` : parts[0]
         setPreviewAmount(result)
-      } catch (e) {
+      } catch {
         setPreviewError('Erreur lors de l’estimation')
         setPreviewAmount(null)
       } finally {
