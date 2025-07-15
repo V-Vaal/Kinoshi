@@ -14,6 +14,7 @@ import {
 } from '@/components/ui'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import Alert from './Alert'
 
 const DepositForm: React.FC = () => {
   const [amount, setAmount] = useState('')
@@ -172,6 +173,10 @@ const DepositForm: React.FC = () => {
           ) : null}
         </div>
       )}
+      <Alert
+        message="⚠️ Le résultat de previewDeposit() est estimatif et peut varier selon l’exécution réelle."
+        className="mt-4"
+      />
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { useAccount } from 'wagmi'
 import { useVault } from '@/context/VaultContext'
 import { Button, Input } from '@/components/ui'
 import { toast } from 'sonner'
+import Alert from './Alert'
 
 const RedeemForm: React.FC = () => {
   const [shares, setShares] = useState('')
@@ -110,6 +111,10 @@ const RedeemForm: React.FC = () => {
           ) : null}
         </div>
       )}
+      <Alert
+        message="⚠️ Le résultat de previewDeposit() est estimatif et peut varier selon l’exécution réelle."
+        className="mt-4"
+      />
     </div>
   )
 }
