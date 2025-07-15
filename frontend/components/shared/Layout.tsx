@@ -1,7 +1,6 @@
 'use client'
 
 import { useAccount } from 'wagmi'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
 import Header from './Header'
 
 interface LayoutProps {

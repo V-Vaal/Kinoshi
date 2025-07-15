@@ -11,9 +11,8 @@ import {
   KinoshiButton,
   KinoshiBadge,
   Progress,
-  Separator,
 } from '@/components/ui'
-import { RefreshCw, TrendingUp, Users, Coins, Shield } from 'lucide-react'
+import { RefreshCw, Users, Coins, Shield } from 'lucide-react'
 
 const Dashboard: React.FC = () => {
   const { totalAssets, userShares, decimals, fetchVaultData } = useVault()
@@ -35,7 +34,7 @@ const Dashboard: React.FC = () => {
       const result =
         parts.length > 1 ? `${parts[0]},${parts[1].slice(0, 2)}` : parts[0]
       return `${result} USDC`
-    } catch (error) {
+    } catch {
       return 'Erreur de formatage'
     }
   }
@@ -86,7 +85,7 @@ const Dashboard: React.FC = () => {
                 <Coins className="w-5 h-5 text-[var(--kinoshi-primary)]" />
               </div>
               <div>
-                <h3 className="font-serif font-extrabold text-[var(--kinoshi-text)]">
+                <h3 className="font-serif font-extrabold text-[var(--kinoshi-accent)]">
                   Total des actifs
                 </h3>
                 <p className="text-sm text-[var(--kinoshi-text)]/90 font-sans font-medium">
@@ -108,7 +107,7 @@ const Dashboard: React.FC = () => {
                 <Users className="w-5 h-5 text-[var(--kinoshi-text)]" />
               </div>
               <div>
-                <h3 className="font-serif font-extrabold text-[var(--kinoshi-text)]">
+                <h3 className="font-serif font-extrabold text-[var(--kinoshi-accent)]">
                   Vos parts
                 </h3>
                 <p className="text-sm text-[var(--kinoshi-text)]/90 font-sans font-medium">

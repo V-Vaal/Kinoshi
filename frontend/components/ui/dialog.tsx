@@ -12,7 +12,10 @@ const Dialog = React.forwardRef<
   <div ref={ref} className={cn('', className)} {...props}>
     {React.Children.map(children, (child) => {
       if (React.isValidElement(child)) {
-        return React.cloneElement(child, { open, onOpenChange } as any)
+        return React.cloneElement(child, {
+          open,
+          onOpenChange,
+        } as React.ComponentProps<any>)
       }
       return child
     })}

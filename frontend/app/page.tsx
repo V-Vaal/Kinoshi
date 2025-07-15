@@ -5,7 +5,6 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import Image from 'next/image'
 import Dashboard from '@/components/Dashboard'
 import DepositForm from '@/components/DepositForm'
-import { KinoshiButton } from '@/components/ui'
 
 export default function HomePage() {
   const { isConnected } = useAccount()

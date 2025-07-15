@@ -12,7 +12,10 @@ const Tabs = React.forwardRef<
   <div ref={ref} className={cn('', className)} {...props}>
     {React.Children.map(children, (child) => {
       if (React.isValidElement(child)) {
-        return React.cloneElement(child, { value, onValueChange } as any)
+        return React.cloneElement(child, {
+          value,
+          onValueChange,
+        } as React.ComponentProps<any>)
       }
       return child
     })}
