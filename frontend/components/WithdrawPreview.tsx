@@ -1,32 +1,36 @@
-import React, { useEffect, useState } from 'react';
-import { useVault } from '@/context/VaultContext';
+import React, { useEffect, useState } from 'react'
+import { useVault } from '@/context/VaultContext'
 
 const WithdrawPreview: React.FC = () => {
-  const { userShares, previewRedeem } = useVault();
-  const [netAmount, setNetAmount] = useState<string>('0');
-  const [loading, setLoading] = useState(false);
+  const { userShares, previewRedeem } = useVault()
+  const [netAmount, setNetAmount] = useState<string>('0')
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     const fetchPreview = async () => {
       if (!userShares || userShares === 0n) {
-        setNetAmount('0');
-        return;
+        setNetAmount('0')
+        return
       }
-      setLoading(true);
+      setLoading(true)
       try {
-        const amount = await previewRedeem(userShares);
-        setNetAmount((Number(amount) / 10 ** 6).toLocaleString('fr-FR', { maximumFractionDigits: 2 }));
+        const amount = await previewRedeem(userShares)
+        setNetAmount(
+          (Number(amount) / 10 ** 6).toLocaleString('fr-FR', {
+            maximumFractionDigits: 2,
+          })
+        )
       } catch {
-        setNetAmount('Erreur');
+        setNetAmount('Erreur')
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
-    fetchPreview();
-  }, [userShares, previewRedeem]);
+    }
+    fetchPreview()
+  }, [userShares, previewRedeem])
 
-  if (loading) return <div>Calcul en cours...</div>;
-  if (netAmount === 'Erreur') return <div>Erreur lors de la simulation.</div>;
+  if (loading) return <div>Calcul en cours...</div>
+  if (netAmount === 'Erreur') return <div>Erreur lors de la simulation.</div>
 
   return (
     <div className="withdraw-preview">
@@ -34,7 +38,7 @@ const WithdrawPreview: React.FC = () => {
       <p style={{ fontWeight: 'bold', fontSize: 18 }}>{netAmount} USDC</p>
       <small>(Frais de sortie déjà déduits)</small>
     </div>
-  );
-};
+  )
+}
 
-export default WithdrawPreview; 
+export default WithdrawPreview

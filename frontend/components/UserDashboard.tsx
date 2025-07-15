@@ -1,38 +1,42 @@
-import React, { useEffect, useState } from 'react';
-import { useUser } from '@/context/UserContext';
-import { useVault } from '@/context/VaultContext';
-import { useTokenRegistry } from '@/context/TokenRegistryContext';
-import { useAccount, useBalance } from 'wagmi';
-import RWABreakdown from './RWABreakdown';
-import WithdrawPreview from './WithdrawPreview';
-import { Button } from './ui/button';
+import React, { useEffect, useState } from 'react'
+import { useUser } from '@/context/UserContext'
+import { useVault } from '@/context/VaultContext'
+import { useTokenRegistry } from '@/context/TokenRegistryContext'
+import { useAccount, useBalance } from 'wagmi'
+import RWABreakdown from './RWABreakdown'
+import WithdrawPreview from './WithdrawPreview'
+import { Button } from './ui/button'
 
 const UserDashboard: React.FC = () => {
-  const { address } = useAccount();
-  const { isVisitor } = useUser();
-  const { userShares, decimals } = useVault();
-  const { registeredTokens } = useTokenRegistry();
-  const [showWithdrawPreview, setShowWithdrawPreview] = useState(false);
+  const { address } = useAccount()
+  const { isVisitor } = useUser()
+  const { userShares, decimals } = useVault()
+  const { registeredTokens } = useTokenRegistry()
+  const [showWithdrawPreview, setShowWithdrawPreview] = useState(false)
 
   // Solde mUSDC du wallet
   const { data: usdcBalance } = useBalance({
     address,
-    token: registeredTokens.find(t => t.symbol === 'mUSDC')?.tokenAddress as `0x${string}` | undefined
-  });
+    token: registeredTokens.find((t) => t.symbol === 'mUSDC')?.tokenAddress as
+      | `0x${string}`
+      | undefined,
+  })
 
   // Valeur estimée des parts en USDC
-  const [userAssets, setUserAssets] = useState<string>('0');
+  const [userAssets, setUserAssets] = useState<string>('0')
   useEffect(() => {
     if (userShares && decimals !== null) {
       // On suppose 6 décimales pour l'USDC
-      const assets = Number(userShares) / 10 ** decimals;
-      setUserAssets(assets.toLocaleString('fr-FR', { maximumFractionDigits: 2 }));
+      const assets = Number(userShares) / 10 ** decimals
+      setUserAssets(
+        assets.toLocaleString('fr-FR', { maximumFractionDigits: 2 })
+      )
     } else {
-      setUserAssets('0');
+      setUserAssets('0')
     }
-  }, [userShares, decimals]);
+  }, [userShares, decimals])
 
-  if (isVisitor) return null;
+  if (isVisitor) return null
 
   return (
     <div className="user-dashboard">
@@ -59,9 +63,7 @@ const UserDashboard: React.FC = () => {
         {/* Bloc 3 : Valeur estimée en USDC */}
         <div className="dashboard-block">
           <h3>Valeur estimée</h3>
-          <p>
-            {userAssets} USDC
-          </p>
+          <p>{userAssets} USDC</p>
         </div>
         {/* Bloc 4 : Répartition RWA */}
         <div className="dashboard-block" style={{ minWidth: 300 }}>
@@ -70,18 +72,25 @@ const UserDashboard: React.FC = () => {
         </div>
         {/* Bloc 5 : Bouton Déposer */}
         <div className="dashboard-block">
-          <Button onClick={() => window.location.href = '/depot'}>Déposer</Button>
+          <Button onClick={() => (window.location.href = '/depot')}>
+            Déposer
+          </Button>
         </div>
       </div>
       {/* Optionnel : Preview retrait */}
       <div style={{ marginTop: 32 }}>
-        <Button variant="outline" onClick={() => setShowWithdrawPreview(v => !v)}>
-          {showWithdrawPreview ? 'Masquer la simulation de retrait' : 'Simuler un retrait'}
+        <Button
+          variant="outline"
+          onClick={() => setShowWithdrawPreview((v) => !v)}
+        >
+          {showWithdrawPreview
+            ? 'Masquer la simulation de retrait'
+            : 'Simuler un retrait'}
         </Button>
         {showWithdrawPreview && <WithdrawPreview />}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default UserDashboard; 
+export default UserDashboard
