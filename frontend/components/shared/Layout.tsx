@@ -1,3 +1,6 @@
+'use client'
+
+import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import Header from './Header'
 
@@ -6,9 +9,11 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const { isConnected } = useAccount()
+
   return (
     <div className="min-h-screen flex flex-col bg-[#566243]">
-      <Header />
+      {isConnected && <Header />}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         {children}
       </main>
