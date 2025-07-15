@@ -15,7 +15,7 @@ const Dialog = React.forwardRef<
         return React.cloneElement(child, {
           open,
           onOpenChange,
-        } as React.ComponentProps<any>)
+        } as React.ComponentProps<React.ElementType>)
       }
       return child
     })}

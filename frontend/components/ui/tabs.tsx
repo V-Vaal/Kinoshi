@@ -15,7 +15,7 @@ const Tabs = React.forwardRef<
         return React.cloneElement(child, {
           value,
           onValueChange,
-        } as React.ComponentProps<any>)
+        } as React.ComponentProps<React.ElementType>)
       }
       return child
     })}
