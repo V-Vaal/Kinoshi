@@ -3,7 +3,11 @@
 import React, { useState, useEffect } from 'react'
 import { parseUnits } from 'viem'
 import { useAccount } from 'wagmi'
-import { writeContract, waitForTransactionReceipt } from 'wagmi/actions'
+import {
+  writeContract,
+  waitForTransactionReceipt,
+  readContract,
+} from 'wagmi/actions'
 import { useTokenRegistry } from '@/context/TokenRegistryContext'
 import {
   KinoshiCard,
@@ -35,6 +39,12 @@ const AdminPanel: React.FC = () => {
   const { registeredTokens, fetchTokenData } = useTokenRegistry()
   const [allocations, setAllocations] = useState<TokenAllocation[]>([])
   const [isSaving, setIsSaving] = useState(false)
+
+  // États pour les frais
+  const [exitFeeBps, setExitFeeBps] = useState<number>(0)
+  const [isLoadingFees, setIsLoadingFees] = useState(false)
+  const [isSavingFees, setIsSavingFees] = useState(false)
+  const [isApplyingManagementFee, setIsApplyingManagementFee] = useState(false)
 
   // Initialiser les allocations avec les tokens enregistrés
   useEffect(() => {
@@ -136,10 +146,89 @@ const AdminPanel: React.FC = () => {
     }
   }
 
+  // Charger les frais actuels
+  const loadFees = async () => {
+    setIsLoadingFees(true)
+    try {
+      const exitFee = await readContract(wagmiConfig, {
+        abi: vaultAbi,
+        address: vaultAddress as `0x${string}`,
+        functionName: 'exitFeeBps',
+      })
+
+      setExitFeeBps(Number(exitFee))
+    } catch (error) {
+      console.error('Erreur lors du chargement des frais:', error)
+      // Garder les valeurs par défaut
+    } finally {
+      setIsLoadingFees(false)
+    }
+  }
+
+  // Sauvegarder les frais de sortie
+  const saveExitFee = async () => {
+    if (!isConnected || !address) {
+      toast.error('Wallet non connecté')
+      return
+    }
+
+    if (exitFeeBps < 0 || exitFeeBps > 1000) {
+      toast.error(
+        'Les frais de sortie doivent être entre 0 et 1000 basis points'
+      )
+      return
+    }
+
+    setIsSavingFees(true)
+    try {
+      const hash = await writeContract(wagmiConfig, {
+        abi: vaultAbi,
+        address: vaultAddress as `0x${string}`,
+        functionName: 'setExitFeeBps',
+        args: [BigInt(exitFeeBps)],
+      })
+
+      await waitForTransactionReceipt(wagmiConfig, { hash })
+      toast.success('Frais de sortie mis à jour avec succès !')
+      await loadFees() // Recharger les valeurs
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde des frais de sortie:', error)
+      toast.error('Erreur lors de la sauvegarde des frais de sortie')
+    } finally {
+      setIsSavingFees(false)
+    }
+  }
+
+  // Appliquer les frais de gestion
+  const applyManagementFee = async () => {
+    if (!isConnected || !address) {
+      toast.error('Wallet non connecté')
+      return
+    }
+
+    setIsApplyingManagementFee(true)
+    try {
+      const hash = await writeContract(wagmiConfig, {
+        abi: vaultAbi,
+        address: vaultAddress as `0x${string}`,
+        functionName: 'accrueManagementFee',
+      })
+
+      await waitForTransactionReceipt(wagmiConfig, { hash })
+      toast.success('Frais de gestion appliqués avec succès !')
+    } catch (error) {
+      console.error("Erreur lors de l'application des frais de gestion:", error)
+      toast.error("Erreur lors de l'application des frais de gestion")
+    } finally {
+      setIsApplyingManagementFee(false)
+    }
+  }
+
   // Charger les données au montage
   useEffect(() => {
     if (isConnected) {
       fetchTokenData()
+      loadFees()
     }
   }, [isConnected, fetchTokenData])
 
@@ -276,6 +365,73 @@ const AdminPanel: React.FC = () => {
                 </KinoshiButton>
               </div>
             </>
+          )}
+        </KinoshiCardContent>
+      </KinoshiCard>
+
+      {/* Section des frais */}
+      <KinoshiCard variant="outlined" className="max-w-4xl mx-auto">
+        <KinoshiCardHeader>
+          <KinoshiCardTitle>Gestion des frais</KinoshiCardTitle>
+        </KinoshiCardHeader>
+        <KinoshiCardContent className="space-y-6">
+          {isLoadingFees ? (
+            <div className="text-center">
+              <p className="text-[var(--kinoshi-text)]/70 font-sans font-medium">
+                Chargement des frais...
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Frais de sortie */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="font-sans font-semibold text-[var(--kinoshi-text)]">
+                    Frais de sortie
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={exitFeeBps}
+                      onChange={(e) =>
+                        setExitFeeBps(parseInt(e.target.value) || 0)
+                      }
+                      min="0"
+                      max="1000"
+                      step="1"
+                      className="w-20 text-center"
+                    />
+                    <span className="text-sm text-[var(--kinoshi-text)]/70">
+                      bps
+                    </span>
+                    <span className="text-sm text-[var(--kinoshi-text)]/50">
+                      ({(exitFeeBps / 100).toFixed(2)}%)
+                    </span>
+                  </div>
+                </div>
+                <div className="text-xs text-[var(--kinoshi-text)]/60">
+                  Frais prélevés lors des retraits (0-1000 basis points = 0-10%)
+                </div>
+              </div>
+
+              {/* Boutons d'action */}
+              <div className="flex gap-4 justify-center pt-4 border-t border-[var(--kinoshi-border)]/30">
+                <KinoshiButton onClick={saveExitFee} disabled={isSavingFees}>
+                  {isSavingFees
+                    ? 'Mise à jour...'
+                    : 'Mettre à jour les frais de sortie'}
+                </KinoshiButton>
+                <KinoshiButton
+                  variant="outline"
+                  onClick={applyManagementFee}
+                  disabled={isApplyingManagementFee}
+                >
+                  {isApplyingManagementFee
+                    ? 'Application...'
+                    : 'Appliquer frais de gestion'}
+                </KinoshiButton>
+              </div>
+            </div>
           )}
         </KinoshiCardContent>
       </KinoshiCard>
