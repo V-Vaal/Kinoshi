@@ -1,103 +1,136 @@
 'use client'
 
 import React from 'react'
+import { formatUnits } from 'viem'
+import { useTokenRegistry } from '@/context/TokenRegistryContext'
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from './ui/card'
-import { Badge } from './ui/badge'
+  KinoshiCard,
+  KinoshiCardHeader,
+  KinoshiCardTitle,
+  KinoshiCardContent,
+} from '@/components/ui'
 
 interface StrategySelectorProps {
-  selectedStrategy: string
-  onStrategyChange: (strategyId: string) => void
+  className?: string
 }
 
-const strategies = [
-  {
-    id: 'equilibree',
-    name: 'Stratégie Équilibrée',
-    description:
-      'Allocation équilibrée entre les différents actifs pour un risque modéré',
-    allocations: [
-      { asset: 'USDC', percentage: 25 },
-      { asset: 'Or', percentage: 25 },
-      { asset: 'Bitcoin', percentage: 25 },
-      { asset: 'Obligations', percentage: 15 },
-      { asset: 'Actions', percentage: 10 },
-    ],
-    riskLevel: 'Modéré',
-    expectedReturn: '6-8%',
-  },
-]
+const StrategySelector: React.FC<StrategySelectorProps> = ({ className }) => {
+  const { registeredTokens, allocations, isLoading } = useTokenRegistry()
 
-export function StrategySelector({
-  selectedStrategy,
-  onStrategyChange,
-}: StrategySelectorProps) {
-  const currentStrategy = strategies.find((s) => s.id === selectedStrategy)
+  // Fonction pour calculer le pourcentage de pondération
+  const getWeightPercentage = (weight: bigint): string => {
+    const percentage = Number(formatUnits(weight, 18)) * 100
+    return `${percentage.toFixed(1)}%`
+  }
+
+  // Fonction pour trouver l'allocation d'un token
+  const getAllocationForToken = (tokenAddress: string) => {
+    return allocations.find(
+      (allocation) =>
+        allocation.token.toLowerCase() === tokenAddress.toLowerCase()
+    )
+  }
+
+  // Skeleton pour le loading
+  const Skeleton = () => (
+    <div className="animate-pulse">
+      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+      <div className="h-4 bg-gray-200 rounded w-1/2" />
+    </div>
+  )
+
+  if (isLoading) {
+    return (
+      <KinoshiCard variant="outlined" className={className}>
+        <KinoshiCardHeader>
+          <KinoshiCardTitle>Stratégie d'investissement</KinoshiCardTitle>
+        </KinoshiCardHeader>
+        <KinoshiCardContent>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} />
+            ))}
+          </div>
+        </KinoshiCardContent>
+      </KinoshiCard>
+    )
+  }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Stratégie d'Investissement</CardTitle>
-        <CardDescription>
-          Sélectionnez votre profil de risque et d'investissement
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {strategies.map((strategy) => (
-          <div
-            key={strategy.id}
-            className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-              selectedStrategy === strategy.id
-                ? 'border-primary bg-primary/5'
-                : 'border-border hover:border-primary/50'
-            }`}
-            onClick={() => onStrategyChange(strategy.id)}
-          >
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <h3 className="font-semibold">{strategy.name}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {strategy.description}
-                </p>
-              </div>
-              <div className="flex space-x-2">
-                <Badge variant="outline">{strategy.riskLevel}</Badge>
-                <Badge variant="secondary">{strategy.expectedReturn}</Badge>
-              </div>
-            </div>
+    <KinoshiCard variant="outlined" className={className}>
+      <KinoshiCardHeader>
+        <KinoshiCardTitle>Stratégie d'investissement</KinoshiCardTitle>
+      </KinoshiCardHeader>
+      <KinoshiCardContent>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[var(--kinoshi-border)]/30">
+                <th className="text-left py-2 font-serif font-extrabold text-[var(--kinoshi-text)]">
+                  Token
+                </th>
+                <th className="text-right py-2 font-serif font-extrabold text-[var(--kinoshi-text)]">
+                  Pondération
+                </th>
+                <th className="text-center py-2 font-serif font-extrabold text-[var(--kinoshi-text)]">
+                  Statut
+                </th>
+              </tr>
+            </thead>
+            <tbody className="space-y-2">
+              {registeredTokens.map((token) => {
+                const allocation = getAllocationForToken(token.tokenAddress)
+                const isActive = allocation?.active ?? false
+                const weight = allocation?.weight ?? 0n
 
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">Allocation :</h4>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                {strategy.allocations.map((allocation) => (
-                  <div key={allocation.asset} className="flex justify-between">
-                    <span>{allocation.asset}</span>
-                    <span className="font-medium">
-                      {allocation.percentage}%
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        ))}
+                return (
+                  <tr
+                    key={token.tokenAddress}
+                    className={`border-b border-[var(--kinoshi-border)]/20 ${
+                      !isActive
+                        ? 'opacity-50 pointer-events-none select-none'
+                        : ''
+                    }`}
+                  >
+                    <td className="py-3 font-sans font-medium text-[var(--kinoshi-text)]/90">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`font-semibold ${!isActive ? 'text-[var(--kinoshi-text)]/60' : 'text-[var(--kinoshi-text)]'}`}
+                        >
+                          {token.symbol}
+                        </span>
+                        {!isActive && (
+                          <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">
+                            Désactivé
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 text-right font-mono font-semibold text-[var(--kinoshi-primary)]">
+                      {weight > 0n ? getWeightPercentage(weight) : '—'}
+                    </td>
+                    <td className="py-3 text-center">
+                      <span
+                        className={`inline-block w-2 h-2 rounded-full ${
+                          isActive ? 'bg-green-500' : 'bg-red-500'
+                        }`}
+                      />
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
 
-        {currentStrategy && (
-          <div className="pt-4 border-t">
-            <p className="text-sm text-muted-foreground">
-              <strong>Stratégie sélectionnée :</strong> {currentStrategy.name}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Prix fictifs (démo) - Les allocations réelles peuvent varier
-            </p>
+        {registeredTokens.length === 0 && (
+          <div className="text-center py-8 text-[var(--kinoshi-text)]/70">
+            Aucun token enregistré
           </div>
         )}
-      </CardContent>
-    </Card>
+      </KinoshiCardContent>
+    </KinoshiCard>
   )
 }
+
+export default StrategySelector

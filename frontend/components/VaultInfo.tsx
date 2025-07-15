@@ -1,106 +1,87 @@
 'use client'
 
 import React from 'react'
+import { formatUnits } from 'viem'
+import { useVault } from '@/context/VaultContext'
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from './ui/card'
-import { Badge } from './ui/badge'
+  KinoshiCard,
+  KinoshiCardHeader,
+  KinoshiCardTitle,
+  KinoshiCardContent,
+  KinoshiBadge,
+} from '@/components/ui'
 
 interface VaultInfoProps {
-  vaultAddress: string
-  usdcAddress: string
-  strategyId: string
+  className?: string
 }
 
-export function VaultInfo({ strategyId }: VaultInfoProps) {
-  // Mock data for demo
-  const totalAssets = '50000.0'
-  const totalSupply = '50000.0'
-  const sharePrice = 1.0
+const VaultInfo: React.FC<VaultInfoProps> = ({ className }) => {
+  const { totalAssets, userShares, decimals } = useVault()
+
+  // Skeleton simple
+  const Skeleton = () => (
+    <div className="animate-pulse h-6 bg-gray-200 rounded w-32" />
+  )
+
+  // Formattage
+  const formatValue = (
+    value: bigint | null,
+    decimals: number | null
+  ): string => {
+    if (value === null || decimals === null) return '—'
+    try {
+      const formatted = formatUnits(value, decimals)
+      const parts = formatted.split('.')
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+      const result =
+        parts.length > 1 ? `${parts[0]},${parts[1].slice(0, 2)}` : parts[0]
+      return `${result} USDC`
+    } catch {
+      return 'Erreur'
+    }
+  }
+
+  // Badge démo (à adapter selon logique réelle)
+  const isDemo = true
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          Informations du Vault
-          <Badge variant="secondary">{strategyId}</Badge>
-        </CardTitle>
-        <CardDescription>
-          État actuel du vault et de la stratégie d&apos;investissement
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+    <KinoshiCard variant="outlined" className={className}>
+      <KinoshiCardHeader className="flex flex-row items-center gap-2">
+        <KinoshiCardTitle>Votre investissement</KinoshiCardTitle>
+        {isDemo && (
+          <KinoshiBadge variant="warning">Prix fictif (démo)</KinoshiBadge>
+        )}
+      </KinoshiCardHeader>
+      <KinoshiCardContent>
+        <div className="flex flex-col gap-4">
           <div>
-            <p className="text-sm font-medium text-muted-foreground">
-              Total Assets
-            </p>
-            <p className="text-2xl font-bold">{totalAssets} USDC</p>
+            <div className="text-xs font-sans text-[var(--kinoshi-text)]/70 mb-1">
+              Montant total investi
+            </div>
+            <div className="text-2xl font-serif font-extrabold text-[var(--kinoshi-primary)]">
+              {totalAssets === null || decimals === null ? (
+                <Skeleton />
+              ) : (
+                formatValue(totalAssets, decimals)
+              )}
+            </div>
           </div>
           <div>
-            <p className="text-sm font-medium text-muted-foreground">
-              Total Supply
-            </p>
-            <p className="text-2xl font-bold">{totalSupply} parts</p>
-          </div>
-        </div>
-
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">
-            Prix de la part
-          </p>
-          <p className="text-xl font-semibold">{sharePrice.toFixed(6)} USDC</p>
-        </div>
-
-        <div className="pt-4 border-t">
-          <h4 className="text-sm font-medium mb-2">
-            Allocation de la stratégie
-          </h4>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span>USDC</span>
-              <span>25%</span>
+            <div className="text-xs font-sans text-[var(--kinoshi-text)]/70 mb-1">
+              Vos parts détenues
             </div>
-            <div className="flex justify-between">
-              <span>Or</span>
-              <span>25%</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Bitcoin</span>
-              <span>25%</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Obligations</span>
-              <span>15%</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Actions</span>
-              <span>10%</span>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Prix fictifs (démo) - Allocation équilibrée
-          </p>
-        </div>
-
-        <div className="pt-4 border-t">
-          <h4 className="text-sm font-medium mb-2">Frais</h4>
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span>Frais de sortie</span>
-              <span>0.5%</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Frais de gestion</span>
-              <span>1%</span>
+            <div className="text-xl font-mono font-semibold text-[var(--kinoshi-text)]">
+              {userShares === null || decimals === null ? (
+                <Skeleton />
+              ) : (
+                formatValue(userShares, decimals)
+              )}
             </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </KinoshiCardContent>
+    </KinoshiCard>
   )
 }
+
+export default VaultInfo

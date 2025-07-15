@@ -1,214 +1,325 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from './ui/card'
-import { Button } from './ui/button'
-import { Badge } from './ui/badge'
-
-interface RiskProfileFormProps {
-  onComplete: (score: number) => void
-}
+  KinoshiCard,
+  KinoshiCardHeader,
+  KinoshiCardTitle,
+  KinoshiCardContent,
+  KinoshiButton,
+  Progress,
+} from '@/components/ui'
 
 interface Question {
   id: number
   text: string
   options: {
-    value: number
-    label: string
+    letter: string
+    text: string
+    points: number
   }[]
+}
+
+interface RiskProfile {
+  score: number
+  profile: 'Conservateur' | 'Équilibré' | 'Agressif'
+  completedAt: string
 }
 
 const questions: Question[] = [
   {
     id: 1,
-    text: "Quel est votre horizon d'investissement ?",
+    text: 'Sur quel horizon de temps souhaitez-vous investir votre capital ?',
     options: [
-      { value: 1, label: 'Moins de 1 an' },
-      { value: 2, label: '1-3 ans' },
-      { value: 3, label: '3-5 ans' },
-      { value: 4, label: 'Plus de 5 ans' },
+      { letter: 'A', text: 'Moins de 2 ans', points: 1 },
+      { letter: 'B', text: 'Entre 2 et 5 ans', points: 2 },
+      { letter: 'C', text: 'Plus de 5 ans', points: 3 },
     ],
   },
   {
     id: 2,
-    text: 'Comment réagiriez-vous si votre portefeuille perdait 20% de sa valeur ?',
+    text: 'Que feriez-vous si la valeur de votre investissement baissait de 15 % en quelques semaines ?',
     options: [
-      { value: 1, label: 'Je vendrais immédiatement' },
-      { value: 2, label: 'Je vendrais une partie' },
-      { value: 3, label: "J'attendrais que ça remonte" },
-      { value: 4, label: "J'achèterais plus" },
+      { letter: 'A', text: 'Je vends pour limiter la perte', points: 1 },
+      { letter: 'B', text: "Je conserve et j'attends une reprise", points: 2 },
+      {
+        letter: 'C',
+        text: 'Je profite de la baisse pour investir davantage',
+        points: 3,
+      },
     ],
   },
   {
     id: 3,
-    text: 'Quel pourcentage de votre épargne investissez-vous ?',
+    text: 'Quel niveau de fluctuation êtes-vous prêt à accepter sur la valeur de votre portefeuille ?',
     options: [
-      { value: 1, label: 'Moins de 10%' },
-      { value: 2, label: '10-25%' },
-      { value: 3, label: '25-50%' },
-      { value: 4, label: 'Plus de 50%' },
+      {
+        letter: 'A',
+        text: 'Faible (je veux éviter les variations importantes)',
+        points: 1,
+      },
+      {
+        letter: 'B',
+        text: 'Modérée (des hausses et baisses raisonnables)',
+        points: 2,
+      },
+      {
+        letter: 'C',
+        text: "Élevée (j'accepte des mouvements importants pour viser un rendement plus élevé)",
+        points: 3,
+      },
     ],
   },
   {
     id: 4,
-    text: 'Quel type de rendement recherchez-vous ?',
+    text: 'Quelle est votre priorité principale ?',
     options: [
-      { value: 1, label: 'Sécurité avant tout' },
-      { value: 2, label: 'Rendement modéré' },
-      { value: 3, label: 'Croissance' },
-      { value: 4, label: 'Croissance agressive' },
+      { letter: 'A', text: 'Préserver mon capital', points: 1 },
+      {
+        letter: 'B',
+        text: 'Trouver un équilibre entre risque et rendement',
+        points: 2,
+      },
+      {
+        letter: 'C',
+        text: 'Maximiser la performance à long terme, même avec un risque élevé',
+        points: 3,
+      },
     ],
   },
   {
     id: 5,
-    text: 'Avez-vous déjà investi dans des actifs numériques ?',
+    text: 'Quelle part de vos revenus/économies cet investissement représente-t-il ?',
     options: [
-      { value: 1, label: 'Jamais' },
-      { value: 2, label: 'Un peu' },
-      { value: 3, label: 'Modérément' },
-      { value: 4, label: 'Régulièrement' },
+      {
+        letter: 'A',
+        text: 'Une part importante, je ne peux pas me permettre de grosses pertes',
+        points: 1,
+      },
+      {
+        letter: 'B',
+        text: 'Une part significative, mais pas vitale',
+        points: 2,
+      },
+      {
+        letter: 'C',
+        text: 'Une petite part, que je peux me permettre de perdre sans conséquences majeures',
+        points: 3,
+      },
+    ],
+  },
+  {
+    id: 6,
+    text: 'Quelle expérience avez-vous avec les placements risqués (actions, crypto, produits dérivés) ?',
+    options: [
+      { letter: 'A', text: 'Aucune ou très limitée', points: 1 },
+      {
+        letter: 'B',
+        text: "Moyenne, j'ai déjà investi mais prudemment",
+        points: 2,
+      },
+      {
+        letter: 'C',
+        text: 'Élevée, je connais bien ces produits et leurs risques',
+        points: 3,
+      },
     ],
   },
 ]
 
-export function RiskProfileForm({ onComplete }: RiskProfileFormProps) {
-  const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [answers, setAnswers] = useState<number[]>([])
+const getProfileFromScore = (
+  score: number
+): 'Conservateur' | 'Équilibré' | 'Agressif' => {
+  if (score >= 6 && score <= 9) return 'Conservateur'
+  if (score >= 10 && score <= 13) return 'Équilibré'
+  return 'Agressif'
+}
+
+const getProfileMessage = (profile: string): string => {
+  switch (profile) {
+    case 'Conservateur':
+      return 'Vous privilégiez la sécurité et la stabilité. Nos stratégies conservatrices vous conviendront parfaitement avec des allocations équilibrées vers des actifs stables.'
+    case 'Équilibré':
+      return 'Vous recherchez un équilibre entre performance et sécurité. Nos stratégies équilibrées vous offriront une diversification optimale pour atteindre vos objectifs.'
+    case 'Agressif':
+      return "Vous êtes à l'aise avec le risque pour maximiser vos rendements. Nos stratégies dynamiques vous permettront d'exploiter les opportunités de marché."
+    default:
+      return ''
+  }
+}
+
+const RiskProfileForm: React.FC = () => {
+  const [currentStep, setCurrentStep] = useState(0)
+  const [answers, setAnswers] = useState<number[]>(
+    new Array(questions.length).fill(-1)
+  )
+  const [riskProfile, setRiskProfile] = useState<RiskProfile | null>(null)
   const [isCompleted, setIsCompleted] = useState(false)
 
-  const handleAnswer = (value: number) => {
-    const newAnswers = [...answers]
-    newAnswers[currentQuestion] = value
-    setAnswers(newAnswers)
+  // Charger le profil depuis localStorage au montage
+  useEffect(() => {
+    const savedProfile = localStorage.getItem('kinoshi-risk-profile')
+    if (savedProfile) {
+      try {
+        const profile = JSON.parse(savedProfile) as RiskProfile
+        setRiskProfile(profile)
+        setIsCompleted(true)
+      } catch {
+        // En cas d'erreur, on supprime le localStorage corrompu
+        localStorage.removeItem('kinoshi-risk-profile')
+      }
+    }
+  }, [])
 
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1)
+  const handleAnswer = (questionIndex: number, points: number) => {
+    const newAnswers = [...answers]
+    newAnswers[questionIndex] = points
+    setAnswers(newAnswers)
+  }
+
+  const calculateScore = (): number => {
+    return answers.reduce((sum, answer) => sum + (answer > 0 ? answer : 0), 0)
+  }
+
+  const handleNext = () => {
+    if (currentStep < questions.length - 1) {
+      setCurrentStep(currentStep + 1)
     } else {
-      // Calculate final score
-      const totalScore = newAnswers.reduce((sum, answer) => sum + answer, 0)
-      const averageScore = totalScore / questions.length
+      // Fin du questionnaire
+      const score = calculateScore()
+      const profile = getProfileFromScore(score)
+      const riskProfileData: RiskProfile = {
+        score,
+        profile,
+        completedAt: new Date().toISOString(),
+      }
+
+      setRiskProfile(riskProfileData)
+      localStorage.setItem(
+        'kinoshi-risk-profile',
+        JSON.stringify(riskProfileData)
+      )
       setIsCompleted(true)
-      onComplete(averageScore)
     }
   }
 
-  const getRiskProfile = (score: number) => {
-    if (score <= 1.5)
-      return { level: 'Conservateur', color: 'bg-green-100 text-green-800' }
-    if (score <= 2.5)
-      return { level: 'Modéré', color: 'bg-yellow-100 text-yellow-800' }
-    if (score <= 3.5)
-      return { level: 'Équilibré', color: 'bg-orange-100 text-orange-800' }
-    return { level: 'Dynamique', color: 'bg-red-100 text-red-800' }
+  const handlePrevious = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1)
+    }
   }
 
-  const getRecommendedStrategy = (score: number) => {
-    if (score <= 1.5) return 'Stratégie Conservatrice (à venir)'
-    if (score <= 2.5) return 'Stratégie Équilibrée'
-    if (score <= 3.5) return 'Stratégie Équilibrée'
-    return 'Stratégie Dynamique (à venir)'
+  const handleReset = () => {
+    setCurrentStep(0)
+    setAnswers(new Array(questions.length).fill(-1))
+    setRiskProfile(null)
+    setIsCompleted(false)
+    localStorage.removeItem('kinoshi-risk-profile')
   }
 
-  if (isCompleted) {
-    const score =
-      answers.reduce((sum, answer) => sum + answer, 0) / questions.length
-    const riskProfile = getRiskProfile(score)
-    const recommendedStrategy = getRecommendedStrategy(score)
+  const canProceed = answers[currentStep] > 0
+  const progress = ((currentStep + 1) / questions.length) * 100
 
+  if (isCompleted && riskProfile) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Profil de Risque Completé</CardTitle>
-          <CardDescription>Voici votre profil d'investisseur</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <KinoshiCard variant="outlined" className="max-w-2xl mx-auto">
+        <KinoshiCardHeader>
+          <KinoshiCardTitle>Votre profil d'investisseur</KinoshiCardTitle>
+        </KinoshiCardHeader>
+        <KinoshiCardContent className="space-y-6">
           <div className="text-center">
-            <Badge className={riskProfile.color}>{riskProfile.level}</Badge>
-          </div>
-
-          <div className="space-y-2">
-            <h4 className="font-medium">
-              Score de risque : {score.toFixed(1)}/4
-            </h4>
-            <p className="text-sm text-muted-foreground">
-              Stratégie recommandée : {recommendedStrategy}
+            <div className="text-3xl font-serif font-extrabold text-[var(--kinoshi-primary)] mb-2">
+              {riskProfile.profile}
+            </div>
+            <div className="text-lg font-mono font-semibold text-[var(--kinoshi-text)] mb-4">
+              Score : {riskProfile.score}/18
+            </div>
+            <p className="text-[var(--kinoshi-text)]/90 font-sans font-medium leading-relaxed">
+              {getProfileMessage(riskProfile.profile)}
             </p>
           </div>
 
-          <div className="pt-4 border-t">
-            <h4 className="font-medium mb-2">Vos réponses :</h4>
-            <div className="space-y-2 text-sm">
-              {questions.map((question, index) => (
-                <div key={question.id} className="flex justify-between">
-                  <span className="truncate">{question.text}</span>
-                  <span className="font-medium">{answers[index]}/4</span>
-                </div>
-              ))}
+          <div className="pt-4 border-t border-[var(--kinoshi-border)]/30">
+            <div className="flex justify-between items-center text-sm text-[var(--kinoshi-text)]/70">
+              <span>
+                Complété le{' '}
+                {new Date(riskProfile.completedAt).toLocaleDateString('fr-FR')}
+              </span>
+              <KinoshiButton variant="outline" onClick={handleReset} size="sm">
+                Recommencer
+              </KinoshiButton>
             </div>
           </div>
-
-          <Button
-            onClick={() => {
-              setIsCompleted(false)
-              setCurrentQuestion(0)
-              setAnswers([])
-            }}
-            variant="outline"
-            className="w-full"
-          >
-            Recommencer le questionnaire
-          </Button>
-        </CardContent>
-      </Card>
+        </KinoshiCardContent>
+      </KinoshiCard>
     )
   }
 
-  const question = questions[currentQuestion]
-  const progress = ((currentQuestion + 1) / questions.length) * 100
+  const currentQuestion = questions[currentStep]
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Questionnaire de Profil de Risque</CardTitle>
-        <CardDescription>
-          Question {currentQuestion + 1} sur {questions.length}
-        </CardDescription>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div
-            className="bg-primary h-2 rounded-full transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
+    <KinoshiCard variant="outlined" className="max-w-2xl mx-auto">
+      <KinoshiCardHeader>
+        <KinoshiCardTitle>Profil d'investisseur</KinoshiCardTitle>
+        <div className="flex items-center gap-4 mt-2">
+          <Progress value={progress} className="flex-1" />
+          <span className="text-sm font-mono text-[var(--kinoshi-text)]/70">
+            {currentStep + 1}/{questions.length}
+          </span>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <h3 className="text-lg font-medium">{question.text}</h3>
+      </KinoshiCardHeader>
+      <KinoshiCardContent className="space-y-6">
+        <div>
+          <h3 className="text-lg font-serif font-extrabold text-[var(--kinoshi-text)] mb-6">
+            {currentQuestion.text}
+          </h3>
 
-        <div className="space-y-2">
-          {question.options.map((option) => (
-            <Button
-              key={option.value}
-              variant="outline"
-              className="w-full justify-start h-auto p-4"
-              onClick={() => handleAnswer(option.value)}
-            >
-              <div className="text-left">
-                <div className="font-medium">{option.label}</div>
-              </div>
-            </Button>
-          ))}
+          <div className="space-y-3">
+            {currentQuestion.options.map((option) => (
+              <button
+                key={option.letter}
+                onClick={() => handleAnswer(currentStep, option.points)}
+                className={`w-full p-4 text-left rounded-lg border transition-all ${
+                  answers[currentStep] === option.points
+                    ? 'border-[var(--kinoshi-primary)] bg-[var(--kinoshi-primary)]/10'
+                    : 'border-[var(--kinoshi-border)] hover:border-[var(--kinoshi-primary)]/50'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-sm font-bold ${
+                      answers[currentStep] === option.points
+                        ? 'border-[var(--kinoshi-primary)] bg-[var(--kinoshi-primary)] text-white'
+                        : 'border-[var(--kinoshi-border)] text-[var(--kinoshi-text)]/70'
+                    }`}
+                  >
+                    {option.letter}
+                  </div>
+                  <span className="font-sans font-medium text-[var(--kinoshi-text)]">
+                    {option.text}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="text-xs text-muted-foreground text-center">
-          Ce questionnaire nous aide à vous proposer la stratégie la plus
-          adaptée à votre profil
+        <div className="flex justify-between pt-4">
+          <KinoshiButton
+            variant="outline"
+            onClick={handlePrevious}
+            disabled={currentStep === 0}
+          >
+            Précédent
+          </KinoshiButton>
+
+          <KinoshiButton onClick={handleNext} disabled={!canProceed}>
+            {currentStep === questions.length - 1 ? 'Terminer' : 'Suivant'}
+          </KinoshiButton>
         </div>
-      </CardContent>
-    </Card>
+      </KinoshiCardContent>
+    </KinoshiCard>
   )
 }
+
+export default RiskProfileForm
