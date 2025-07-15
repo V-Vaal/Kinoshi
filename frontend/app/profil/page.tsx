@@ -9,6 +9,7 @@ import {
   KinoshiCardContent,
   KinoshiButton,
 } from '@/components/ui'
+import RequireAuth from '@/components/RequireAuth'
 
 interface RiskProfile {
   score: number
@@ -58,51 +59,57 @@ const ProfilePage: React.FC = () => {
 
   // Si on doit afficher le formulaire, on utilise le composant existant
   if (showForm) {
-    return <RiskProfileForm />
+    return (
+      <RequireAuth userOnly>
+        <RiskProfileForm />
+      </RequireAuth>
+    )
   }
 
   // Sinon on affiche le résumé du profil
   return (
-    <div className="container mx-auto px-4 py-8">
-      <KinoshiCard variant="outlined" className="max-w-2xl mx-auto">
-        <KinoshiCardHeader>
-          <KinoshiCardTitle>Votre profil de risque</KinoshiCardTitle>
-        </KinoshiCardHeader>
-        <KinoshiCardContent className="space-y-6">
-          <div className="text-center">
-            <div className="text-3xl font-serif font-extrabold text-[var(--kinoshi-primary)] mb-2">
-              🎯 Vous êtes un profil {riskProfile?.profile}
+    <RequireAuth userOnly>
+      <div className="container mx-auto px-4 py-8">
+        <KinoshiCard variant="outlined" className="max-w-2xl mx-auto">
+          <KinoshiCardHeader>
+            <KinoshiCardTitle>Votre profil de risque</KinoshiCardTitle>
+          </KinoshiCardHeader>
+          <KinoshiCardContent className="space-y-6">
+            <div className="text-center">
+              <div className="text-3xl font-serif font-extrabold text-[var(--kinoshi-primary)] mb-2">
+                🎯 Vous êtes un profil {riskProfile?.profile}
+              </div>
+              <div className="text-lg font-mono font-semibold text-[var(--kinoshi-text)] mb-4">
+                Score : {riskProfile?.score}/18
+              </div>
+              <p className="text-[var(--kinoshi-text)]/90 font-sans font-medium leading-relaxed">
+                {riskProfile ? getProfileMessage(riskProfile.profile) : ''}
+              </p>
             </div>
-            <div className="text-lg font-mono font-semibold text-[var(--kinoshi-text)] mb-4">
-              Score : {riskProfile?.score}/18
-            </div>
-            <p className="text-[var(--kinoshi-text)]/90 font-sans font-medium leading-relaxed">
-              {riskProfile ? getProfileMessage(riskProfile.profile) : ''}
-            </p>
-          </div>
 
-          <div className="pt-4 border-t border-[var(--kinoshi-border)]/30">
-            <div className="flex justify-between items-center text-sm text-[var(--kinoshi-text)]/70">
-              <span>
-                Complété le{' '}
-                {riskProfile
-                  ? new Date(riskProfile.completedAt).toLocaleDateString(
-                      'fr-FR'
-                    )
-                  : ''}
-              </span>
-              <KinoshiButton
-                variant="outline"
-                onClick={handleModifyProfile}
-                size="sm"
-              >
-                Modifier mon profil
-              </KinoshiButton>
+            <div className="pt-4 border-t border-[var(--kinoshi-border)]/30">
+              <div className="flex justify-between items-center text-sm text-[var(--kinoshi-text)]/70">
+                <span>
+                  Complété le{' '}
+                  {riskProfile
+                    ? new Date(riskProfile.completedAt).toLocaleDateString(
+                        'fr-FR'
+                      )
+                    : ''}
+                </span>
+                <KinoshiButton
+                  variant="outline"
+                  onClick={handleModifyProfile}
+                  size="sm"
+                >
+                  Modifier mon profil
+                </KinoshiButton>
+              </div>
             </div>
-          </div>
-        </KinoshiCardContent>
-      </KinoshiCard>
-    </div>
+          </KinoshiCardContent>
+        </KinoshiCard>
+      </div>
+    </RequireAuth>
   )
 }
 

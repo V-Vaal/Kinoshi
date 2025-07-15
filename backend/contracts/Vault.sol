@@ -38,6 +38,10 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     // Adresse du receiver des frais de gestion
     address public feeReceiver;
 
+    // Gestion des rôles
+    mapping(address => bool) public isAdmin;
+    mapping(address => bool) public isWhitelisted;
+
     event Deposited(address indexed user, uint256 amount);
     event WithdrawExecuted(address indexed user, address indexed receiver, uint256 assets);
     event AllocationsUpdated(address indexed admin);
@@ -131,6 +135,24 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         if (shares == 0) revert InvalidAmount();
         _mint(feeReceiver, shares);
         emit ManagementFeeAccrued(feeReceiver, shares);
+    }
+
+    /**
+     * @notice Définit ou retire un admin (onlyOwner)
+     * @param _addr Adresse à modifier
+     * @param _status true pour ajouter, false pour retirer
+     */
+    function setAdmin(address _addr, bool _status) external onlyOwner {
+        isAdmin[_addr] = _status;
+    }
+
+    /**
+     * @notice Définit ou retire un utilisateur whitelisté (onlyOwner)
+     * @param _addr Adresse à modifier
+     * @param _status true pour ajouter, false pour retirer
+     */
+    function setWhitelisted(address _addr, bool _status) external onlyOwner {
+        isWhitelisted[_addr] = _status;
     }
 
     /**
@@ -264,6 +286,11 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
 
     modifier whenNotPausedCustom() {
         if (paused()) revert Pausable__Paused();
+        _;
+    }
+
+    modifier onlyAdmin() {
+        require(isAdmin[msg.sender], "Not admin");
         _;
     }
 

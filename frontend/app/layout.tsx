@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
-import { VaultProvider } from '@/context/VaultContext'
 import RainbowKitAndWagmiProvider from '@/components/RainbowKitAndWagmiProvider'
 import Layout from '@/components/shared/Layout'
 import { Toaster } from '@/components/ui/sonner'
+import { ContextProvider } from '@/context/ContextProvider'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -33,9 +33,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}
       >
         <RainbowKitAndWagmiProvider>
-          <VaultProvider>
+          <ContextProvider>
             <Layout>{children}</Layout>
-          </VaultProvider>
+          </ContextProvider>
         </RainbowKitAndWagmiProvider>
         <Toaster />
       </body>

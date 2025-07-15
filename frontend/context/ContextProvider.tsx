@@ -1,3 +1,5 @@
+'use client'
+
 import React, { ReactNode } from 'react'
 import { LangProvider } from './LangContext'
 import { UIProvider } from './UIContext'
