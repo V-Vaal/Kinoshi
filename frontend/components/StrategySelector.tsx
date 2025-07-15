@@ -87,7 +87,9 @@ const StrategySelector: React.FC<StrategySelectorProps> = ({ className }) => {
                   <tr
                     key={token.tokenAddress}
                     className={`border-b border-[var(--kinoshi-border)]/20 ${
-                      !isActive ? 'opacity-50' : ''
+                      !isActive
+                        ? 'opacity-50 pointer-events-none select-none'
+                        : ''
                     }`}
                   >
                     <td className="py-3 font-sans font-medium text-[var(--kinoshi-text)]/90">
