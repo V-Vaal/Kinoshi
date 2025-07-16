@@ -141,7 +141,7 @@ async function main() {
   console.log("\n💰 Configuration des frais...");
 
   // Définir les frais de sortie à 0.5% (50 basis points)
-  await vault.setExitFeeBps(50);
+  await vault.setFees(50, 0);
   console.log("✅ Frais de sortie configurés à 0.5%");
 
   // Définir le fee receiver (utilise le deployer pour les tests)
