@@ -9,9 +9,11 @@ import {
   KinoshiCardContent,
   KinoshiButton,
 } from '@/components/ui'
-import RequireAuth from '@/components/RequireAuth'
 import MintMockUSDC from '@/components/MintMockUSDC'
 import StrategySelector from '@/components/StrategySelector'
+import RequireAuth from '@/components/RequireAuth'
+import { useUser } from '@/context/UserContext'
+import { useRouter } from 'next/navigation'
 
 interface RiskProfile {
   score: number
@@ -35,6 +37,14 @@ const getProfileMessage = (profile: string): string => {
 const ProfilePage: React.FC = () => {
   const [riskProfile, setRiskProfile] = useState<RiskProfile | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const { isAdmin, loadingRole } = useUser()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!loadingRole && isAdmin) {
+      router.replace('/admin')
+    }
+  }, [isAdmin, loadingRole, router])
 
   useEffect(() => {
     let savedProfile: string | null = null
@@ -64,6 +74,13 @@ const ProfilePage: React.FC = () => {
     }
     setRiskProfile(null)
     setShowForm(true)
+  }
+
+  if (loadingRole) {
+    return null
+  }
+  if (isAdmin) {
+    return null
   }
 
   // Si on doit afficher le formulaire, on utilise le composant existant

@@ -12,7 +12,7 @@ import { useAccount } from 'wagmi'
 import { readContract } from 'wagmi/actions'
 import type { Abi } from 'viem'
 import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
-import { vaultAddress } from '@/constants'
+import { vaultAddress, tokenRegistryAddress } from '@/constants'
 
 // Types pour TokenRegistry
 export interface TokenInfo {
@@ -63,20 +63,7 @@ export const TokenRegistryProvider = ({
   const fetchTokenData = useCallback(async () => {
     setIsLoading(true)
     try {
-      // Récupérer le registry depuis le vault
-      const registryAddress = (await readContract(wagmiConfig, {
-        abi: [
-          {
-            inputs: [],
-            name: 'registry',
-            outputs: [{ type: 'address', name: '' }],
-            stateMutability: 'view',
-            type: 'function',
-          },
-        ],
-        address: vaultAddress as `0x${string}`,
-        functionName: 'registry',
-      })) as string
+      const registryAddress = tokenRegistryAddress
 
       // Récupérer les tokens enregistrés
       const tokens = (await readContract(wagmiConfig, {

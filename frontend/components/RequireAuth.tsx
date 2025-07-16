@@ -13,10 +13,18 @@ const RequireAuth = ({ children, adminOnly, userOnly }: RequireAuthProps) => {
   const router = useRouter()
 
   useEffect(() => {
+    // Pour les pages admin, vérifier uniquement si l'utilisateur est admin
+    if (adminOnly && !loadingRole && !isAdmin) {
+      router.replace('/unauthorized')
+      return
+    }
+
+    // Pour les autres pages, ne pas bloquer les utilisateurs connectés
+    // isVisitor = non connecté, donc on ne bloque que si vraiment pas connecté
     if (!loadingRole && isVisitor) {
       router.replace('/unauthorized')
     }
-  }, [isVisitor, loadingRole, router])
+  }, [isVisitor, loadingRole, router, adminOnly, isAdmin])
 
   if (loadingRole) {
     return (
@@ -28,15 +36,13 @@ const RequireAuth = ({ children, adminOnly, userOnly }: RequireAuthProps) => {
     )
   }
 
-  if (isVisitor) {
-    return null
-  }
-
+  // Pour les pages admin, bloquer si pas admin
   if (adminOnly && !isAdmin) {
     return null
   }
 
-  if (userOnly && !isUser) {
+  // Pour les autres pages, ne pas bloquer les utilisateurs connectés
+  if (isVisitor) {
     return null
   }
 

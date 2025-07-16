@@ -6,6 +6,7 @@ import {
   RainbowKitProvider,
   lightTheme,
 } from '@rainbow-me/rainbowkit'
+import { rabbyWallet } from '@rainbow-me/rainbowkit/wallets'
 import { WagmiProvider } from 'wagmi'
 import { hardhat, sepolia, mainnet } from 'wagmi/chains'
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
@@ -28,6 +29,15 @@ const config = getDefaultConfig({
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo',
   chains: activeChains,
   ssr: true, // Support SSR pour Next.js
+  wallets: [
+    {
+      groupName: 'Recommandés',
+      wallets: [
+        rabbyWallet,
+        // Les autres portefeuilles par défaut sont automatiquement inclus
+      ],
+    },
+  ],
 })
 
 const queryClient = new QueryClient()

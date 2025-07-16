@@ -11,7 +11,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ['Manrope', 'Inter', 'system-ui', 'sans-serif'],
-        serif: ['Playfair Display', 'serif'],
+        serif: ['Spectral', 'serif'],
       },
       fontWeight: {
         thin: '100',

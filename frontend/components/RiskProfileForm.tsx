@@ -258,6 +258,41 @@ const RiskProfileForm: React.FC = () => {
                 Recommencer
               </KinoshiButton>
             </div>
+
+            {/* Avertissement changement de stratégie */}
+            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <span className="text-amber-600 text-sm">⚠️</span>
+                <p className="text-sm text-amber-800">
+                  Changer de profil n'affecte pas vos investissements actuels.
+                  Votre nouvelle stratégie sera appliquée uniquement à vos
+                  futurs dépôts.
+                </p>
+              </div>
+            </div>
+
+            {/* Disclaimer profil non-équilibré en démo */}
+            {riskProfile.profile !== 'Équilibré' && (
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-600 text-sm">ℹ️</span>
+                  <p className="text-sm text-blue-800">
+                    Pour cette démo, seul le profil <strong>Équilibré</strong>{' '}
+                    est disponible. Votre profil a été automatiquement ajusté
+                    pour correspondre à la stratégie équilibrée.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4 text-center">
+              <KinoshiButton
+                onClick={() => (window.location.href = '/portefeuille')}
+                className="w-full"
+              >
+                Accéder à mon portefeuille
+              </KinoshiButton>
+            </div>
           </div>
         </KinoshiCardContent>
       </KinoshiCard>

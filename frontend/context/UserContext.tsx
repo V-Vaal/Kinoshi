@@ -76,8 +76,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     fetchRole()
   }, [address, isConnected])
 
-  const isVisitor = !isAdmin && !isUser
-  const isAuthorized = () => isAdmin || isUser
+  // Un utilisateur connecté est considéré comme "user" même s'il n'est pas whitelisté
+  // isWhitelisted est conservé comme information technique uniquement
+  const isVisitor = !isConnected
+  const isAuthorized = () => isConnected
 
   return (
     <UserContext.Provider
