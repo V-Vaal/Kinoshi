@@ -4,7 +4,7 @@ import { useVault } from '@/context/VaultContext'
 import { readContract } from 'wagmi/actions'
 import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
 import mockPriceFeedAbi from '@/abis/MockPriceFeed.abi.json'
-import { vaultAddress } from '@/constants'
+import { vaultAddress, mockOracleAddress } from '@/constants'
 
 // Helper pour récupérer l'adresse de l'oracle depuis le Vault
 async function getOracleAddress(): Promise<string> {
@@ -58,7 +58,7 @@ const RWABreakdown: React.FC = () => {
           try {
             await readContract(wagmiConfig, {
               abi: mockPriceFeedAbi.abi,
-              address: oracleAddress as `0x${string}`,
+              address: mockOracleAddress as `0x${string}`,
               functionName: 'getPrice',
               args: [alloc.token],
             })

@@ -1,5 +1,7 @@
 import { ethers } from "hardhat";
 import { parseUnits } from "ethers";
+import { writeFileSync } from "fs";
+import { join } from "path";
 
 async function main() {
   const [deployer, treasury] = await ethers.getSigners();
@@ -108,28 +110,23 @@ async function main() {
 
   const strategyAllocations = [
     {
-      token: await mockUSDC.getAddress(),
-      weight: parseUnits("0.25", 18),
-      active: true,
-    },
-    {
       token: await mockGold.getAddress(),
-      weight: parseUnits("0.25", 18),
+      weight: parseUnits("0.20", 18),
       active: true,
     },
     {
       token: await mockBTC.getAddress(),
-      weight: parseUnits("0.25", 18),
-      active: true,
-    },
-    {
-      token: await mockBonds.getAddress(),
       weight: parseUnits("0.15", 18),
       active: true,
     },
     {
+      token: await mockBonds.getAddress(),
+      weight: parseUnits("0.35", 18),
+      active: true,
+    },
+    {
       token: await mockEquity.getAddress(),
-      weight: parseUnits("0.10", 18),
+      weight: parseUnits("0.30", 18),
       active: true,
     },
   ];

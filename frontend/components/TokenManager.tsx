@@ -15,7 +15,10 @@ import { toast } from 'sonner'
 import { isAddress } from 'viem'
 import { writeContract, waitForTransactionReceipt } from 'wagmi/actions'
 import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
-import tokenRegistryAbi from '@/abis/TokenRegistry.abi.json'
+import tokenRegistryAbiJson from '@/abis/TokenRegistry.abi.json'
+import type { Abi } from 'viem'
+const tokenRegistryAbi = (tokenRegistryAbiJson.abi ??
+  tokenRegistryAbiJson) as Abi
 import { tokenRegistryAddress } from '@/constants'
 
 const TokenManager: React.FC = () => {

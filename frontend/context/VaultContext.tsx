@@ -26,6 +26,7 @@ export interface VaultContextType {
   totalAssets: bigint | null
   userShares: bigint | null
   decimals: number | null
+  assetDecimals: number | null // Ajout des décimales du token sous-jacent
   previewDeposit: (amount: bigint) => Promise<bigint>
   previewRedeem: (shares: bigint) => Promise<bigint>
   deposit: (amount: bigint) => Promise<void>
@@ -47,11 +48,27 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
   const [totalAssets, setTotalAssets] = useState<bigint | null>(null)
   const [userShares, setUserShares] = useState<bigint | null>(null)
   const [decimals, setDecimals] = useState<number | null>(null)
+  const [assetDecimals, setAssetDecimals] = useState<number | null>(null) // Ajout
 
   // Récupère toutes les infos du contrat
   const fetchVaultData = useCallback(async () => {
     try {
-      const [assets, shares, dec] = await Promise.all([
+      // Récupérer d'abord l'adresse du token sous-jacent
+      const assetAddress = (await readContract(wagmiConfig, {
+        abi: [
+          {
+            inputs: [],
+            name: 'asset',
+            outputs: [{ name: '', type: 'address' }],
+            stateMutability: 'view',
+            type: 'function',
+          },
+        ],
+        address: vaultAddress as `0x${string}`,
+        functionName: 'asset',
+      })) as `0x${string}`
+
+      const [assets, shares, dec, assetDec] = await Promise.all([
         readContract(wagmiConfig, {
           abi: vaultAbi,
           address: vaultAddress as `0x${string}`,
@@ -70,14 +87,31 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
           address: vaultAddress as `0x${string}`,
           functionName: 'decimals',
         }) as Promise<number>,
+        // Récupérer les décimales du token sous-jacent
+        readContract(wagmiConfig, {
+          abi: [
+            {
+              inputs: [],
+              name: 'decimals',
+              outputs: [{ name: '', type: 'uint8' }],
+              stateMutability: 'view',
+              type: 'function',
+            },
+          ],
+          address: assetAddress,
+          functionName: 'decimals',
+        }) as Promise<number>,
       ])
       setTotalAssets(assets)
       setUserShares(shares)
       setDecimals(dec)
+      setAssetDecimals(assetDec)
     } catch (err) {
+      console.error('Erreur lors de la récupération des données du Vault:', err)
       setTotalAssets(null)
       setUserShares(null)
       setDecimals(null)
+      setAssetDecimals(null)
     }
   }, [address])
 
@@ -154,6 +188,7 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
     totalAssets,
     userShares,
     decimals,
+    assetDecimals, // Ajout
     previewDeposit,
     previewRedeem,
     deposit,

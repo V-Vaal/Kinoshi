@@ -6,7 +6,7 @@ import { useAccount } from 'wagmi'
 import { writeContract } from 'wagmi/actions'
 import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
 import vaultAbiJson from '@/abis/Vault.abi.json'
-import { vaultAddress } from '@/constants'
+import { vaultAddress, mockTokenAddresses } from '@/constants'
 import { useVault } from '@/context/VaultContext'
 import {
   Button,
@@ -20,6 +20,7 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import Alert from './Alert'
 import { useWaitForTransactionReceipt } from 'wagmi'
+import { readContract } from 'wagmi/actions'
 
 const vaultAbi = (vaultAbiJson.abi ?? vaultAbiJson) as readonly unknown[]
 
@@ -39,8 +40,8 @@ const DepositForm: React.FC = () => {
   const [contractError, setContractError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined)
 
-  const { isConnected } = useAccount()
-  const { previewDeposit, decimals } = useVault()
+  const { isConnected, address: userAddress } = useAccount()
+  const { previewDeposit, decimals, assetDecimals } = useVault()
 
   const {
     isLoading: isTxLoading,
@@ -85,7 +86,7 @@ const DepositForm: React.FC = () => {
   // useEffect pour prévisualiser le dépôt quand le montant change
   useEffect(() => {
     const previewDepositAmount = async () => {
-      if (!amount || !decimals || parseFloat(amount) <= 0) {
+      if (!amount || !assetDecimals || parseFloat(amount) <= 0) {
         setPreviewShares(null)
         setPreviewError(null)
         return
@@ -95,11 +96,11 @@ const DepositForm: React.FC = () => {
       setPreviewError(null)
 
       try {
-        const amountBigInt = parseUnits(amount, decimals)
+        const amountBigInt = parseUnits(amount, assetDecimals)
         const shares = await previewDeposit(amountBigInt)
 
-        // Formater les parts avec 2 décimales
-        const formattedShares = formatUnits(shares, decimals)
+        // Formater les parts avec 2 décimales (utiliser decimals du Vault pour l'affichage)
+        const formattedShares = formatUnits(shares, decimals || 18)
         const parts = formattedShares.split('.')
         parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
         const result =
@@ -116,22 +117,148 @@ const DepositForm: React.FC = () => {
     }
 
     previewDepositAmount()
-  }, [amount, decimals, previewDeposit])
+  }, [amount, assetDecimals, decimals, previewDeposit])
 
   const handleDeposit = async () => {
+    console.log('🚀 Début handleDeposit')
     setContractError(null)
-    if (!amount || !decimals) return
+
+    // Vérifications initiales
+    console.log('📋 Vérifications:', {
+      amount,
+      assetDecimals,
+      decimals,
+      isConnected,
+    })
+    console.log('🔍 Décimales:', {
+      vaultDecimals: decimals,
+      assetDecimals: assetDecimals,
+    })
+    if (!amount || !assetDecimals || !isConnected) {
+      console.log('❌ Vérifications échouées')
+      return
+    }
+
     setIsLoading(true)
     try {
-      const amountBigInt = parseUnits(amount, decimals)
+      const amountBigInt = parseUnits(amount, assetDecimals)
+      console.log('💰 Montant parsé:', {
+        amount,
+        amountBigInt: amountBigInt.toString(),
+      })
+
+      // Adresse utilisateur déjà récupérée au niveau du composant
+      console.log('👤 Adresse utilisateur:', userAddress)
+
+      if (!userAddress) {
+        console.log('❌ Adresse utilisateur non disponible')
+        throw new Error('Adresse utilisateur non disponible')
+      }
+
+      // Vérifier l'allowance avant d'appeler approve
+      console.log("🔍 Vérification de l'allowance...")
+      let allowance = await readContract(wagmiConfig, {
+        abi: [
+          {
+            inputs: [
+              { name: 'owner', type: 'address' },
+              { name: 'spender', type: 'address' },
+            ],
+            name: 'allowance',
+            outputs: [{ name: '', type: 'uint256' }],
+            stateMutability: 'view',
+            type: 'function',
+          },
+        ],
+        address: mockTokenAddresses.mUSDC as `0x${string}`, // MockUSDC
+        functionName: 'allowance',
+        args: [userAddress, vaultAddress],
+      })
+      console.log('📊 Allowance actuelle:', allowance.toString())
+      console.log('📊 Montant à déposer:', amountBigInt.toString())
+
+      if (allowance < amountBigInt) {
+        // Appeler approve uniquement si nécessaire
+        console.log('✅ Début approbation USDC...')
+        console.log('📝 Approbation pour:', {
+          spender: vaultAddress,
+          amount: amountBigInt.toString(),
+          tokenAddress: mockTokenAddresses.mUSDC,
+        })
+        const approveHash = await writeContract(wagmiConfig, {
+          abi: [
+            {
+              inputs: [
+                { name: 'spender', type: 'address' },
+                { name: 'amount', type: 'uint256' },
+              ],
+              name: 'approve',
+              outputs: [{ name: '', type: 'bool' }],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+          ],
+          address: mockTokenAddresses.mUSDC as `0x${string}`, // MockUSDC address
+          functionName: 'approve',
+          args: [vaultAddress, amountBigInt],
+        })
+        console.log('✅ Approve envoyé, hash:', approveHash)
+        // Attendre la confirmation de l'approve
+        await import('wagmi/actions').then(({ waitForTransactionReceipt }) =>
+          waitForTransactionReceipt(wagmiConfig, { hash: approveHash })
+        )
+        // Relire l'allowance après approve
+        allowance = await readContract(wagmiConfig, {
+          abi: [
+            {
+              inputs: [
+                { name: 'owner', type: 'address' },
+                { name: 'spender', type: 'address' },
+              ],
+              name: 'allowance',
+              outputs: [{ name: '', type: 'uint256' }],
+              stateMutability: 'view',
+              type: 'function',
+            },
+          ],
+          address: mockTokenAddresses.mUSDC as `0x${string}`, // MockUSDC
+          functionName: 'allowance',
+          args: [userAddress, vaultAddress],
+        })
+        console.log(
+          '📊 Nouvelle allowance après approve:',
+          allowance.toString()
+        )
+        if (allowance < amountBigInt) {
+          throw new Error(
+            `Allowance insuffisante après approve: ${allowance} < ${amountBigInt}`
+          )
+        }
+      }
+
+      // Appeler deposit avec deux arguments
+      console.log('🏦 Début dépôt...')
+      console.log('📝 Dépôt avec:', {
+        amount: amountBigInt.toString(),
+        receiver: userAddress,
+        vaultAddress: vaultAddress,
+      })
+
       const hash = await writeContract(wagmiConfig, {
         abi: vaultAbi,
         address: vaultAddress as `0x${string}`,
         functionName: 'deposit',
-        args: [amountBigInt],
+        args: [amountBigInt, userAddress],
       })
+      console.log('✅ Dépôt réussi, hash:', hash)
       setTxHash(hash as `0x${string}`)
     } catch (error) {
+      console.error('❌ Erreur détaillée:', error)
+      console.error("❌ Type d'erreur:", typeof error)
+      console.error("❌ Message d'erreur:", (error as Error)?.message)
+      console.error("❌ Code d'erreur:", (error as { code?: unknown })?.code)
+      console.error('❌ Stack trace:', (error as Error)?.stack)
+
       let message = 'Erreur lors du dépôt. Veuillez réessayer.'
       if (
         typeof error === 'object' &&
@@ -149,6 +276,7 @@ const DepositForm: React.FC = () => {
       setContractError(message)
     } finally {
       setIsLoading(false)
+      console.log('🏁 Fin handleDeposit')
     }
   }
 

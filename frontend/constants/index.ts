@@ -1,7 +1,7 @@
 // constants/index.ts
 
 // 🔐 Adresses des contrats déployés localement (Hardhat)
-// 💡 À mettre à jour après chaque déploiement local
+// 💡 Généré automatiquement par le script de déploiement
 // 📝 Ne pas utiliser en prod/testnet sans adaptation
 
 export const vaultAddress = '0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE'

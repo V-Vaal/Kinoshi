@@ -8,7 +8,7 @@ import {
 } from 'wagmi/actions'
 import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
 import mockPriceFeedAbi from '@/abis/MockPriceFeed.abi.json'
-import { vaultAddress } from '@/constants'
+import { vaultAddress, mockOracleAddress } from '@/constants'
 import { toast } from 'sonner'
 
 // Helper pour récupérer l'adresse de l'oracle depuis le Vault
@@ -46,7 +46,6 @@ const AdminOraclePriceEditor: React.FC = () => {
 
   // Récupérer les prix actuels
   useEffect(() => {
-    if (!oracleAddress) return
     const fetchPrices = async () => {
       const activeTokens = allocations
         .filter((a) => a.active)
@@ -56,7 +55,7 @@ const AdminOraclePriceEditor: React.FC = () => {
         try {
           const res = (await readContract(wagmiConfig, {
             abi: mockPriceFeedAbi.abi,
-            address: oracleAddress as `0x${string}`,
+            address: mockOracleAddress as `0x${string}`,
             functionName: 'getPrice',
             args: [token],
           })) as [bigint, number]
@@ -70,19 +69,18 @@ const AdminOraclePriceEditor: React.FC = () => {
       setInputs(priceMap)
     }
     fetchPrices()
-  }, [oracleAddress, allocations])
+  }, [allocations])
 
   if (!isAdmin) return null
 
   // Met à jour le prix d'un token
   const handleUpdate = async (token: string) => {
-    if (!oracleAddress) return
     setLoading((l) => ({ ...l, [token]: true }))
     try {
       const newPrice = BigInt(Math.floor(Number(inputs[token]) * 1e18))
       const txHash = await writeContract(wagmiConfig, {
         abi: mockPriceFeedAbi.abi,
-        address: oracleAddress as `0x${string}`,
+        address: mockOracleAddress as `0x${string}`,
         functionName: 'setPrice',
         args: [token, newPrice, 18],
       })

@@ -22,15 +22,15 @@ const errorMessages: Record<string, string> = {
 
 const RedeemForm: React.FC = () => {
   const [shares, setShares] = useState('')
-  const [isEstimating, setIsEstimating] = useState(false)
-  const [previewAmount, setPreviewAmount] = useState<string | null>(null)
-  const [previewError, setPreviewError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [previewAmount, setPreviewAmount] = useState<string | null>(null)
+  const [isEstimating, setIsEstimating] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
   const [contractError, setContractError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined)
 
-  const { address, isConnected } = useAccount()
-  const { previewRedeem, userShares, decimals } = useVault()
+  const { isConnected, address } = useAccount()
+  const { userShares, previewRedeem, decimals, assetDecimals } = useVault()
 
   const {
     isLoading: isTxLoading,
@@ -67,21 +67,21 @@ const RedeemForm: React.FC = () => {
       try {
         const sharesBigInt = parseUnits(shares, decimals)
         const amount = await previewRedeem(sharesBigInt)
-        const formatted = formatUnits(amount, decimals)
+        const formatted = formatUnits(amount, assetDecimals || 6) // Utiliser assetDecimals pour formater le montant USDC
         const parts = formatted.split('.')
         parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
         const result =
           parts.length > 1 ? `${parts[0]},${parts[1].slice(0, 2)}` : parts[0]
         setPreviewAmount(result)
       } catch {
-        setPreviewError('Erreur lors de l’estimation')
+        setPreviewError("Erreur lors de l'estimation")
         setPreviewAmount(null)
       } finally {
         setIsEstimating(false)
       }
     }
     estimate()
-  }, [shares, decimals, previewRedeem])
+  }, [shares, decimals, assetDecimals, previewRedeem])
 
   // Validation
   const isValidShares = () => {
