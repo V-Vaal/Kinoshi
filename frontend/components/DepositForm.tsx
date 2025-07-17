@@ -58,6 +58,7 @@ const DepositForm: React.FC = () => {
       toast.success('✅ Transaction confirmée !')
       setAmount('')
       setTxHash(undefined)
+      window.dispatchEvent(new Event('vault-refresh'))
     }
     if (isTxError) {
       setContractError('Erreur lors de la confirmation de la transaction.')

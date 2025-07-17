@@ -5,23 +5,25 @@ import { parseUnits, formatUnits } from 'viem'
 import { useAccount } from 'wagmi'
 import { useVault } from '@/context/VaultContext'
 import { Button, Input } from '@/components/ui'
-import { toast } from 'sonner'
 import Alert from './Alert'
 import { writeContract } from 'wagmi/actions'
 import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
 import vaultAbiJson from '@/abis/Vault.abi.json'
 import { vaultAddress } from '@/constants'
 import { useWaitForTransactionReceipt } from 'wagmi'
+import { readContract } from 'wagmi/actions'
 
-const vaultAbi = (vaultAbiJson.abi ?? vaultAbiJson) as readonly unknown[]
 const errorMessages: Record<string, string> = {
   Paused: 'Les dépôts/retraits sont actuellement suspendus.',
   ZeroAmount: 'Veuillez saisir un montant supérieur à 0.',
   Unauthorized: 'Action non autorisée.',
 }
 
+const MINIMUM_AMOUNT = 50 // 50 USDC
+
 const RedeemForm: React.FC = () => {
-  const [shares, setShares] = useState('')
+  const [shares, setShares] = useState<string>('')
+  const [usdc, setUsdc] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
   const [previewAmount, setPreviewAmount] = useState<string | null>(null)
   const [isEstimating, setIsEstimating] = useState(false)
@@ -29,32 +31,89 @@ const RedeemForm: React.FC = () => {
   const [contractError, setContractError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined)
 
-  const { isConnected, address } = useAccount()
-  const { userShares, previewRedeem, decimals, assetDecimals } = useVault()
-
+  // Ajout du suivi de la transaction
   const {
     isLoading: isTxLoading,
-    isSuccess: isTxSuccess,
     isError: isTxError,
     error: txError,
   } = useWaitForTransactionReceipt({
     hash: txHash,
-    query: { enabled: !!txHash },
   })
 
-  useEffect(() => {
-    if (isTxSuccess) {
-      toast.success('✅ Transaction confirmée !')
-      setShares('')
-      setTxHash(undefined)
-    }
-    if (isTxError) {
-      setContractError('Erreur lors de la confirmation de la transaction.')
-      setTxHash(undefined)
-    }
-  }, [isTxSuccess, isTxError])
+  const { isConnected, address } = useAccount()
+  const { userShares, previewRedeem, decimals, assetDecimals } = useVault()
 
-  // Estimation du montant à retirer
+  // Conversion USDC -> parts
+  const convertToShares: (usdcValue: string) => Promise<string> =
+    React.useCallback(
+      async (usdcValue: string) => {
+        if (!usdcValue || !assetDecimals) return ''
+        try {
+          const amountBigInt = parseUnits(usdcValue, assetDecimals)
+          const shares = await readContract(wagmiConfig, {
+            abi: vaultAbiJson.abi ?? vaultAbiJson,
+            address: vaultAddress as `0x${string}`,
+            functionName: 'convertToShares',
+            args: [amountBigInt],
+          })
+          return (shares as bigint).toString()
+        } catch {
+          return ''
+        }
+      },
+      [assetDecimals]
+    )
+
+  // Conversion parts -> USDC (estimation)
+  const estimateUsdc: (sharesValue: string) => Promise<string> =
+    React.useCallback(
+      async (sharesValue: string) => {
+        if (!sharesValue || !decimals) return ''
+        try {
+          const sharesBigInt = parseUnits(sharesValue, decimals)
+          const amount = await previewRedeem(sharesBigInt)
+          return formatUnits(amount, assetDecimals || 6)
+        } catch {
+          return ''
+        }
+      },
+      [decimals, assetDecimals, previewRedeem]
+    )
+
+  // Synchronisation des champs
+  useEffect(() => {
+    const sharesStr: string =
+      typeof shares === 'string' ? shares : String(shares)
+    if (sharesStr && !isNaN(Number(sharesStr))) {
+      let safeShares = '0'
+      try {
+        safeShares = sharesStr && !isNaN(Number(sharesStr)) ? sharesStr : '0'
+      } catch {
+        safeShares = '0'
+      }
+      estimateUsdc(safeShares).then((usdcVal) => setUsdc(usdcVal))
+    } else {
+      setUsdc('')
+    }
+  }, [shares, estimateUsdc])
+
+  useEffect(() => {
+    if (usdc && !isNaN(Number(usdc))) {
+      convertToShares(usdc).then((sharesVal: string) => {
+        let safeShares = '0'
+        try {
+          safeShares = sharesVal && !isNaN(Number(sharesVal)) ? sharesVal : '0'
+        } catch {
+          safeShares = '0'
+        }
+        setShares(formatUnits(BigInt(safeShares), decimals || 18))
+      })
+    } else {
+      setShares('')
+    }
+  }, [usdc, convertToShares, decimals])
+
+  // Estimation du montant à retirer (affichage)
   useEffect(() => {
     const estimate = async () => {
       if (!shares || !decimals || parseFloat(shares) <= 0) {
@@ -67,7 +126,7 @@ const RedeemForm: React.FC = () => {
       try {
         const sharesBigInt = parseUnits(shares, decimals)
         const amount = await previewRedeem(sharesBigInt)
-        const formatted = formatUnits(amount, assetDecimals || 6) // Utiliser assetDecimals pour formater le montant USDC
+        const formatted = formatUnits(amount, assetDecimals || 6)
         const parts = formatted.split('.')
         parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
         const result =
@@ -84,11 +143,16 @@ const RedeemForm: React.FC = () => {
   }, [shares, decimals, assetDecimals, previewRedeem])
 
   // Validation
-  const isValidShares = () => {
-    if (!shares || !decimals || !userShares) return false
+  const isValid = () => {
+    if (!shares || !usdc || !decimals || !userShares) return false
     try {
       const sharesToRedeem = parseUnits(shares, decimals)
-      return sharesToRedeem > 0n && sharesToRedeem <= userShares
+      const usdcFloat = parseFloat(usdc)
+      return (
+        sharesToRedeem > 0n &&
+        sharesToRedeem <= userShares &&
+        usdcFloat >= MINIMUM_AMOUNT
+      )
     } catch {
       return false
     }
@@ -101,7 +165,7 @@ const RedeemForm: React.FC = () => {
     try {
       const sharesBigInt = parseUnits(shares, decimals)
       const hash = await writeContract(wagmiConfig, {
-        abi: vaultAbi,
+        abi: vaultAbiJson.abi ?? vaultAbiJson,
         address: vaultAddress as `0x${string}`,
         functionName: 'redeem',
         args: [sharesBigInt, address, address],
@@ -128,8 +192,7 @@ const RedeemForm: React.FC = () => {
     }
   }
 
-  const isDisabled =
-    !isConnected || !isValidShares() || isLoading || isTxLoading
+  const isDisabled = !isConnected || !isValid() || isLoading || isTxLoading
 
   return (
     <div className="space-y-2">
@@ -137,11 +200,21 @@ const RedeemForm: React.FC = () => {
         <div className="flex-1">
           <Input
             type="number"
-            placeholder="Nombre de parts à retirer"
+            placeholder="Montant à retirer (USDC)"
+            value={usdc}
+            onChange={(e) => setUsdc(e.target.value)}
+            min="0"
+            step="0.01"
+          />
+        </div>
+        <div className="flex-1">
+          <Input
+            type="number"
+            placeholder="Parts à retirer"
             value={shares}
             onChange={(e) => setShares(e.target.value)}
             min="0"
-            step="0.01"
+            step="0.0001"
           />
         </div>
         <Button onClick={handleRedeem} disabled={isDisabled} className="px-6">
@@ -200,7 +273,7 @@ const RedeemForm: React.FC = () => {
         />
       )}
       <Alert
-        message="⚠️ Le résultat de previewDeposit() est estimatif et peut varier selon l’exécution réelle."
+        message={`⚠️ Le minimum de retrait est de ${MINIMUM_AMOUNT} USDC. Le résultat de previewDeposit() est estimatif et peut varier selon l’exécution réelle.`}
         className="mt-4"
       />
     </div>

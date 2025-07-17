@@ -14,3 +14,6 @@ error TokenAlreadyRegistered();
 error TokenNotRegistered();
 error VaultAlreadyBootstrapped();
 error PriceNotSet(); 
+error MinimumDepositNotMet(uint256 min);
+error MinimumWithdrawNotMet(uint256 min);
+error MinimumRedeemNotMet(uint256 min); 

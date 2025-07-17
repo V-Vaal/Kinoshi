@@ -20,7 +20,7 @@ describe("Vault.sol – Core", function () {
   });
 
   describe("Vault – Bootstrap", function () {
-    it("bootstrapVault() initialise le Vault avec 1 USDC vers le treasury", async function () {
+    it("bootstrapVault() initialise le Vault avec 200 USDC vers le treasury", async function () {
       const { vault, owner, mockUSDC, treasury, tokenRegistry } =
         await loadFixture(deployVaultFixtureEmpty);
 
@@ -34,11 +34,11 @@ describe("Vault.sol – Core", function () {
       ];
       await vault.connect(owner).setAllocations(allocations);
 
-      // Mint 10 USDC au owner et approve pour le bootstrap
-      await mockUSDC.mint(owner.address, parseUnits("10", 6));
+      // Mint 200 USDC au treasury et approve pour le bootstrap
+      await mockUSDC.mint(treasury.address, parseUnits("200", 6));
       await mockUSDC
-        .connect(owner)
-        .approve(await vault.getAddress(), parseUnits("10", 6));
+        .connect(treasury)
+        .approve(await vault.getAddress(), parseUnits("200", 6));
 
       const treasurySharesBefore = await vault.balanceOf(treasury.address);
       const vaultAssetsBefore = await vault.totalAssets();
@@ -52,8 +52,8 @@ describe("Vault.sol – Core", function () {
       // Vérifier que le treasury a reçu des shares du Vault
       expect(treasurySharesAfter - treasurySharesBefore).to.be.gt(0);
 
-      // Vérifier que le Vault détient maintenant 1 USDC
-      expect(vaultAssetsAfter - vaultAssetsBefore).to.equal(1_000_000n);
+      // Vérifier que le Vault détient maintenant 200 USDC
+      expect(vaultAssetsAfter - vaultAssetsBefore).to.equal(200_000_000n);
 
       const totalSupply = await vault.totalSupply();
       expect(totalSupply).to.be.gt(0);
@@ -204,6 +204,75 @@ describe("Vault.sol – Core", function () {
       await expect(
         vault.connect(user1).redeem(0, user1.address, user1.address)
       ).to.be.revertedWithCustomError(vault, "InvalidAmount");
+    });
+
+    it("gère correctement un token à 8 décimales (MockBTC) avec normalisation 18 décimales", async function () {
+      const { ethers } = require("hardhat");
+      const { parseUnits } = ethers;
+      const [owner, user1] = await ethers.getSigners();
+
+      // Déployer MockBTC à 8 décimales
+      const MockBTC = await ethers.getContractFactory("MockUSDC");
+      const mockBTC = await MockBTC.deploy("MockBTC", "mBTC", 8);
+
+      // Déployer TokenRegistry et Vault
+      const TokenRegistry = await ethers.getContractFactory("TokenRegistry");
+      const registry = await TokenRegistry.deploy();
+      await registry
+        .connect(owner)
+        .registerToken(await mockBTC.getAddress(), "mBTC", 8);
+
+      // Déployer un oracle mock
+      const MockPriceFeed = await ethers.getContractFactory("MockPriceFeed");
+      const oracle = await MockPriceFeed.deploy(owner.address);
+      await oracle.setPrice(
+        await mockBTC.getAddress(),
+        parseUnits("100000", 8),
+        8
+      );
+
+      // Déployer le Vault avec MockBTC comme asset (⚠️ uniquement pour ce test)
+      const Vault = await ethers.getContractFactory("Vault");
+      const vault = await Vault.deploy(
+        await mockBTC.getAddress(),
+        "BTC Vault",
+        owner.address,
+        await registry.getAddress(),
+        await oracle.getAddress()
+      );
+
+      // Allocation 100% MockBTC
+      const allocation = [
+        {
+          token: await mockBTC.getAddress(),
+          weight: parseUnits("1", 18),
+          active: true,
+        },
+      ];
+      await vault.connect(owner).setAllocations(allocation);
+
+      // Mint 1 BTC à user1
+      const fullAmount = parseUnits("1", 8);
+      await mockBTC.mint(user1.address, fullAmount);
+      await mockBTC
+        .connect(user1)
+        .approve(await vault.getAddress(), fullAmount);
+
+      // Dépôt de 0.5 BTC
+      const depositAmount = parseUnits("0.5", 8);
+      const expectedShares = await vault.convertToShares(depositAmount);
+
+      await expect(vault.connect(user1).deposit(depositAmount, user1.address))
+        .to.emit(vault, "Deposited")
+        .withArgs(user1.address, depositAmount);
+
+      // Vérifier le nombre de parts
+      const actualShares = await vault.balanceOf(user1.address);
+      expect(actualShares).to.eq(expectedShares);
+
+      // Vérifier le montant restituable avec previewRedeem
+      const previewAssets = await vault.previewRedeem(expectedShares);
+      expect(previewAssets).to.eq(depositAmount);
     });
   });
 

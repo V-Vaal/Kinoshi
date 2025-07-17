@@ -156,11 +156,11 @@ async function main() {
   console.log("\n🚀 Bootstrap du Vault...");
 
   // Approbation pour le bootstrap
-  const bootstrapAmount = parseUnits("1", 6); // 1 USDC
+  const bootstrapAmount = parseUnits("200", 6); // 200 USDC
   await mockUSDC.approve(await vault.getAddress(), bootstrapAmount);
 
   await vault.bootstrapVault();
-  console.log("✅ Vault bootstrappé avec 1 USDC");
+  console.log("✅ Vault bootstrappé avec 200 USDC");
 
   // 11. Affichage des adresses finales
   console.log("\n🎯 Adresses des contrats déployés:");
@@ -178,6 +178,45 @@ async function main() {
   console.log(
     "📝 N'oubliez pas de mettre à jour constants/index.ts avec ces adresses"
   );
+  // 12. Génération automatique du fichier constants pour le frontend
+  console.log("\n🛠️ Génération du fichier frontend/constants/index.ts...");
+
+  const frontendConstantsPath = join(
+    __dirname,
+    "../../frontend/constants/index.ts"
+  );
+  const constantsContent = `// constants/index.ts
+
+  // 🔐 Adresses des contrats déployés localement (Hardhat)
+  // 💡 Généré automatiquement par le script de déploiement
+  // 📝 Ne pas utiliser en prod/testnet sans adaptation
+
+  export const vaultAddress = "${await vault.getAddress()}";
+  export const tokenRegistryAddress = "${await tokenRegistry.getAddress()}";
+
+  export const mockTokenAddresses = {
+    mUSDC: "${await mockUSDC.getAddress()}",
+    mGOLD: "${await mockGold.getAddress()}",
+    mBTC: "${await mockBTC.getAddress()}",
+    mBONDS: "${await mockBonds.getAddress()}",
+    mEQUITY: "${await mockEquity.getAddress()}"
+  };
+
+  export const mockOracleAddress = "${await mockPriceFeed.getAddress()}";
+  `;
+
+  try {
+    writeFileSync(frontendConstantsPath, constantsContent, "utf-8");
+    console.log(
+      "✅ Fichier frontend/constants/index.ts mis à jour automatiquement"
+    );
+  } catch (error) {
+    console.error(
+      "❌ Erreur lors de la mise à jour du fichier constants:",
+      error
+    );
+    console.log("📌 Copie manuelle à envisager si le chemin est incorrect.");
+  }
 }
 
 main().catch((error) => {

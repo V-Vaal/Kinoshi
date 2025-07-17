@@ -16,35 +16,20 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         bool active;
     }
 
-    // Allocation de la stratégie unique du Vault
     AssetAllocation[] public allocations;
-
-    // Label de la stratégie pour identification (ex : "Équilibrée", "Agressive")
     string public strategyLabel;
 
-    // Frais de sortie en basis points (1 BPS = 0.01%)
-    uint256 public constant MAX_FEE_BPS = 1000; // 10%
+    uint256 public constant MAX_FEE_BPS = 1000;
     uint256 public exitFeeBps;
-
-    // Frais de gestion en basis points (1 BPS = 0.01%)
     uint256 public managementFeeBps;
+    uint256 public constant MINIMUM_AMOUNT = 50 * 10**6;
 
-    // Adresse du treasury pour le bootstrap et les frais
     address public immutable treasury;
-
-    // Registry des tokens autorisés
     TokenRegistry public immutable registry;
-
-    // Oracle de prix pour la valorisation des actifs
     IPriceOracle public immutable oracle;
-
-    // Adresse du receiver des frais de gestion
     address public feeReceiver;
-
-    // Solde de la trésorerie accumulée via les frais de retrait
     uint256 public treasuryBalance;
 
-    // Gestion des rôles
     mapping(address => bool) public isAdmin;
     mapping(address => bool) public isWhitelisted;
 
@@ -57,14 +42,6 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     event TreasuryWithdrawn(address indexed to, uint256 amount);
     event FeesUpdated(uint256 exitFeeBps, uint256 managementFeeBps);
 
-    /**
-     * @notice Constructeur du Vault
-     * @param asset_ Token sous-jacent (MockUSDC dans la V1)
-     * @param label Nom de la stratégie associée à ce Vault (ex: "Équilibrée")
-     * @param treasury_ Adresse du treasury pour le bootstrap et les frais
-     * @param registry_ Registry des tokens autorisés
-     * @param oracle_ Oracle de prix pour la valorisation des actifs
-     */
     constructor(IERC20 asset_, string memory label, address treasury_, TokenRegistry registry_, IPriceOracle oracle_)
         ERC4626(asset_)
         ERC20("Kinoshi Vault Share", "KNSHVS")
@@ -79,15 +56,17 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         isAdmin[msg.sender] = true;
     }
 
-    /**
-     * @notice Met à jour l'allocation de la stratégie du Vault (owner only)
-     * @param newAllocations Liste des nouveaux actifs pondérés
-     */
+    function normalizeAmount(uint256 amount, uint8 decimals) internal pure returns (uint256) {
+        return decimals == 18 ? amount : decimals < 18 ? amount * (10 ** (18 - decimals)) : amount / (10 ** (decimals - 18));
+    }
+
+    function denormalizeAmount(uint256 amount, uint8 decimals) internal pure returns (uint256) {
+        return decimals == 18 ? amount : decimals < 18 ? amount / (10 ** (18 - decimals)) : amount * (10 ** (decimals - 18));
+    }
+
     function setAllocations(AssetAllocation[] memory newAllocations) external onlyAdmin {
         require(newAllocations.length > 0, "Allocations cannot be empty");
-
         delete allocations;
-
         uint256 totalWeight;
         for (uint256 i = 0; i < newAllocations.length; i++) {
             if (newAllocations[i].token == address(0)) revert ZeroAddress();
@@ -97,24 +76,14 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
                 totalWeight += newAllocations[i].weight;
             }
         }
-
         if (totalWeight != 1e18) revert InvalidWeightSum();
-
         emit AllocationsUpdated(msg.sender);
     }
 
-    /**
-     * @notice Retourne l'allocation actuelle
-     */
     function getAllocations() external view returns (AssetAllocation[] memory) {
         return allocations;
     }
 
-    /**
-     * @notice Permet à un admin de modifier les frais de sortie et de gestion
-     * @param _exitFeeBps Frais de sortie en basis points (max 1000 = 10%)
-     * @param _managementFeeBps Frais de gestion en basis points (max 1000 = 10%)
-     */
     function setFees(uint256 _exitFeeBps, uint256 _managementFeeBps) external onlyAdmin {
         require(_exitFeeBps <= MAX_FEE_BPS, "Exit fee too high");
         require(_managementFeeBps <= MAX_FEE_BPS, "Management fee too high");
@@ -123,55 +92,34 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         emit FeesUpdated(_exitFeeBps, _managementFeeBps);
     }
 
-    /**
-     * @notice Bootstrap le Vault avec 1 USDC vers le treasury (owner only, une seule fois)
-     * @dev Évite les dépôts à taux arbitraire quand totalSupply == 0
-     */
     function bootstrapVault() external onlyOwner {
         if (totalSupply() > 0) revert VaultAlreadyBootstrapped();
-        deposit(1e6, treasury); // 1 USDC (6 décimales)
+        uint256 amount = 200e6;
+        IERC20(asset()).transferFrom(treasury, address(this), amount);
+        uint256 shares = normalizeAmount(amount, 6);
+        _mint(treasury, shares);
+        emit Deposited(treasury, amount);
     }
 
-    /**
-     * @notice Met à jour l'adresse du receiver des frais de gestion (owner only)
-     * @param newReceiver Nouvelle adresse du receiver
-     */
     function setFeeReceiver(address newReceiver) external onlyOwner {
         if (newReceiver == address(0)) revert ZeroAddress();
         feeReceiver = newReceiver;
     }
 
-    /**
-     * @notice Accrue des frais de gestion en mintant des parts (owner only)
-     * @param shares Nombre de parts à mint pour les frais de gestion
-     */
     function accrueManagementFee(uint256 shares) external onlyOwner {
         if (shares == 0) revert InvalidAmount();
         _mint(feeReceiver, shares);
         emit ManagementFeeAccrued(feeReceiver, shares);
     }
 
-    /**
-     * @notice Définit ou retire un admin (onlyOwner)
-     * @param _addr Adresse à modifier
-     * @param _status true pour ajouter, false pour retirer
-     */
     function setAdmin(address _addr, bool _status) external onlyOwner {
         isAdmin[_addr] = _status;
     }
 
-    /**
-     * @notice Définit ou retire un utilisateur whitelisté (onlyOwner)
-     * @param _addr Adresse à modifier
-     * @param _status true pour ajouter, false pour retirer
-     */
     function setWhitelisted(address _addr, bool _status) external onlyOwner {
         isWhitelisted[_addr] = _status;
     }
 
-    /**
-     * @notice Dépôt d'USDC avec mint de parts ERC4626
-     */
     function deposit(uint256 assets, address receiver)
         public
         whenNotPausedCustom
@@ -179,39 +127,23 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         returns (uint256)
     {
         if (assets == 0) revert InvalidAmount();
-
+        if (assets < MINIMUM_AMOUNT && totalSupply() > 0) revert MinimumDepositNotMet(MINIMUM_AMOUNT);
         uint256 shares = super.deposit(assets, receiver);
         emit Deposited(receiver, assets);
-
-        // Allocation RWA : répartir les assets selon la stratégie active
         for (uint256 i = 0; i < allocations.length; i++) {
             AssetAllocation memory allocation = allocations[i];
-            if (!allocation.active) continue;
-            address token = allocation.token;
-            uint256 allocationAmount = (assets * allocation.weight) / 1e18;
-            // ⚠️ Si le token est l’asset natif du Vault (ex: mUSDC), ne pas mint à nouveau
-            if (token == asset()) continue;
-            // Ajustement des décimales : assets (mUSDC, 6) -> token (peut être 6, 8, 18)
-            uint8 tokenDecimals = registry.getTokenDecimals(token);
-            if (tokenDecimals > 6) {
-                allocationAmount = allocationAmount * (10 ** (tokenDecimals - 6));
-            } else if (tokenDecimals < 6) {
-                allocationAmount = allocationAmount / (10 ** (6 - tokenDecimals));
-            }
-            // Mint le token mock au Vault
-            (bool success, ) = token.call(
-                abi.encodeWithSignature("mint(address,uint256)", address(this), allocationAmount)
-            );
+            if (!allocation.active || allocation.token == asset()) continue;
+            uint256 normalizedAssets = normalizeAmount(assets, 6);
+            uint256 normalizedAllocation = (normalizedAssets * allocation.weight) / 1e18;
+            uint8 tokenDecimals = registry.getTokenDecimals(allocation.token);
+            uint256 allocationAmount = denormalizeAmount(normalizedAllocation, tokenDecimals);
+            (bool success, ) = allocation.token.call(abi.encodeWithSignature("mint(address,uint256)", address(this), allocationAmount));
             require(success, "Mint RWA failed");
-            emit Allocated(token, allocationAmount);
+            emit Allocated(allocation.token, allocationAmount);
         }
-
         return shares;
     }
 
-    /**
-     * @notice Retrait par burn de parts (withdraw)
-     */
     function withdraw(uint256 assets, address receiver, address owner)
         public
         whenNotPausedCustom
@@ -220,15 +152,12 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         returns (uint256)
     {
         if (assets == 0) revert InvalidAmount();
-
+        if (assets < MINIMUM_AMOUNT && assets != totalAssets()) revert MinimumWithdrawNotMet(MINIMUM_AMOUNT);
         uint256 shares = super.withdraw(assets, receiver, owner);
         emit WithdrawExecuted(owner, receiver, assets);
         return shares;
     }
 
-    /**
-     * @notice Retrait par échange de parts (redeem) avec frais de sortie
-     */
     function redeem(uint256 shares, address receiver, address owner)
         public
         whenNotPausedCustom
@@ -237,35 +166,20 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         returns (uint256)
     {
         if (shares == 0) revert InvalidAmount();
-        
-        // Calculer les assets avant les frais
         uint256 assets = super.convertToAssets(shares);
-        
-        // Calculer les frais
+        if (assets < MINIMUM_AMOUNT && shares != totalSupply()) revert MinimumRedeemNotMet(MINIMUM_AMOUNT);
         uint256 fee = (assets * exitFeeBps) / 10_000;
         uint256 assetsAfterFee = assets - fee;
-        
-        // Burn les parts via super.redeem()
         super.redeem(shares, address(this), owner);
-        
-        // Transférer les assets après frais au receiver
         IERC20(asset()).transfer(receiver, assetsAfterFee);
-        
-        // Transférer les frais au treasury et incrémenter treasuryBalance
         if (fee > 0) {
             IERC20(asset()).transfer(treasury, fee);
             treasuryBalance += fee;
             emit ExitFeeApplied(owner, assets, fee);
         }
-        
         return assetsAfterFee;
     }
 
-    /**
-     * @notice Permet à un admin de retirer les fonds de la trésorerie
-     * @param to Adresse de destination
-     * @param amount Montant à transférer
-     */
     function withdrawTreasury(address to, uint256 amount) external onlyAdmin {
         require(to != address(0), "Invalid address");
         require(amount <= treasuryBalance, "Insufficient funds");
@@ -274,53 +188,42 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         emit TreasuryWithdrawn(to, amount);
     }
 
-    /**
-     * @notice Calcule la valeur d'un actif en USDC via l'oracle
-     * @param token Adresse du token
-     * @param balance Balance du token dans le Vault
-     * @return Valeur en USDC (6 décimales)
-     */
     function _getAssetValue(address token, uint256 balance) internal view returns (uint256) {
         if (balance == 0) return 0;
-        
         (uint256 price, uint8 priceDecimals) = oracle.getPrice(token);
-        
-        // Récupérer les décimales du token via le registry
-        uint256 tokenDecimals = registry.getTokenDecimals(token);
-        
-        // Convertir le prix en USDC (6 décimales)
-        // Formule: balance * price / (10^priceDecimals) * (10^6) / (10^tokenDecimals)
-        if (priceDecimals >= 6 && tokenDecimals <= 6) {
-            // Simplification: price / (10^(priceDecimals - 6)) * balance / (10^tokenDecimals)
-            return (price / (10 ** (priceDecimals - 6))) * balance / (10 ** tokenDecimals);
-        } else {
-            // Calcul complet avec précision
-            uint256 value = (balance * price) / (10 ** priceDecimals);
-            return value * (10 ** 6) / (10 ** tokenDecimals);
-        }
+        uint8 tokenDecimals = registry.getTokenDecimals(token);
+        uint256 normalizedPrice = normalizeAmount(price, priceDecimals);
+        uint256 valueIn18Decimals = (balance * normalizedPrice) / 1e18;
+        return denormalizeAmount(valueIn18Decimals, 6);
     }
 
-    /**
-     * @notice Retourne la valeur totale des actifs du Vault en USDC
-     * @dev Calcule la somme pondérée des actifs alloués via l'oracle
-     */
     function totalAssets() public view override returns (uint256) {
+        if (totalSupply() > 0 && IERC20(asset()).balanceOf(address(this)) > 0) {
+            bool hasRWA = false;
+            for (uint256 i = 0; i < allocations.length; i++) {
+                if (allocations[i].active && allocations[i].token != asset()) {
+                    if (IERC20(allocations[i].token).balanceOf(address(this)) > 0) {
+                        hasRWA = true;
+                        break;
+                    }
+                }
+            }
+            if (!hasRWA) {
+                return IERC20(asset()).balanceOf(address(this));
+            }
+        }
         uint256 totalValue = 0;
-        
-        // Parcourir toutes les allocations actives
         for (uint256 i = 0; i < allocations.length; i++) {
             AssetAllocation memory allocation = allocations[i];
-            
             if (allocation.active) {
                 uint256 balance = IERC20(allocation.token).balanceOf(address(this));
-                uint256 assetValue = _getAssetValue(allocation.token, balance);
-                
-                // Appliquer la pondération (weight en 1e18)
+                uint8 tokenDecimals = registry.getTokenDecimals(allocation.token);
+                uint256 normalizedBalance = normalizeAmount(balance, tokenDecimals);
+                uint256 assetValue = _getAssetValue(allocation.token, normalizedBalance);
                 uint256 weightedValue = (assetValue * allocation.weight) / 1e18;
                 totalValue += weightedValue;
             }
         }
-        
         return totalValue;
     }
 
