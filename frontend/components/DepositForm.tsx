@@ -8,6 +8,7 @@ import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
 import vaultAbiJson from '@/abis/Vault.abi.json'
 import { vaultAddress, mockTokenAddresses } from '@/constants'
 import { useVault } from '@/context/VaultContext'
+import { useVaultAnomaly } from '@/utils/useVaultAnomaly'
 import {
   Button,
   Input,
@@ -42,6 +43,7 @@ const DepositForm: React.FC = () => {
 
   const { isConnected, address: userAddress } = useAccount()
   const { previewDeposit, decimals, assetDecimals } = useVault()
+  const { isAnomalous, ratio } = useVaultAnomaly()
 
   const {
     isLoading: isTxLoading,
@@ -100,6 +102,16 @@ const DepositForm: React.FC = () => {
         const amountBigInt = parseUnits(amount, assetDecimals)
         const shares = await previewDeposit(amountBigInt)
 
+        // Vérifier si le ratio est anormal
+        const actualRatio = Number(shares) / Number(amountBigInt)
+
+        if (isAnomalous && actualRatio < 0.95) {
+          setPreviewError(
+            `Le ratio actuel du Vault (${ratio.toFixed(2)}) est temporairement déséquilibré. ` +
+              `Vos parts seront correctement calculées lors du dépôt.`
+          )
+        }
+
         // Formater les parts avec 2 décimales (utiliser decimals du Vault pour l'affichage)
         const formattedShares = formatUnits(shares, decimals || 18)
         const parts = formattedShares.split('.')
@@ -118,7 +130,7 @@ const DepositForm: React.FC = () => {
     }
 
     previewDepositAmount()
-  }, [amount, assetDecimals, decimals, previewDeposit])
+  }, [amount, assetDecimals, decimals, previewDeposit, isAnomalous, ratio])
 
   const handleDeposit = async () => {
     console.log('🚀 Début handleDeposit')

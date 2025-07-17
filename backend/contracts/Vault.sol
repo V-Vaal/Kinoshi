@@ -5,11 +5,14 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./errors.sol";
 import "./TokenRegistry.sol";
 import "./interfaces/IPriceOracle.sol";
 
 contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
+    using SafeERC20 for IERC20;
+    
     struct AssetAllocation {
         address token;
         uint256 weight;
@@ -41,6 +44,7 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     event Allocated(address indexed token, uint256 amount);
     event TreasuryWithdrawn(address indexed to, uint256 amount);
     event FeesUpdated(uint256 exitFeeBps, uint256 managementFeeBps);
+    event VaultBootstrapped(uint256 assets, uint256 shares);
 
     constructor(IERC20 asset_, string memory label, address treasury_, TokenRegistry registry_, IPriceOracle oracle_)
         ERC4626(asset_)
@@ -95,9 +99,18 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     function bootstrapVault() external onlyOwner {
         if (totalSupply() > 0) revert VaultAlreadyBootstrapped();
         uint256 amount = 200e6;
-        IERC20(asset()).transferFrom(treasury, address(this), amount);
+        
+        // Utiliser SafeERC20 pour un transfert sécurisé
+        IERC20(asset()).safeTransferFrom(treasury, address(this), amount);
+        
+        // Vérification explicite après transfert
+        require(IERC20(asset()).balanceOf(address(this)) >= amount, "Transfer failed");
+        
         uint256 shares = normalizeAmount(amount, 6);
         _mint(treasury, shares);
+        
+        // Event dédié pour le bootstrap
+        emit VaultBootstrapped(amount, shares);
         emit Deposited(treasury, amount);
     }
 
