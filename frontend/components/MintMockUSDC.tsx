@@ -11,7 +11,7 @@ import mockUSDCAbiJson from '@/abis/MockUSDC.abi.json'
 import type { Abi } from 'viem'
 
 const MintMockUSDC: React.FC = () => {
-  const { address, isAdmin, isUser, isVisitor } = useUser()
+  const { address, isAdmin, isVisitor } = useUser()
   const { fetchVaultData } = useVault()
   const [loading, setLoading] = useState(false)
   const [userBalance, setUserBalance] = useState<bigint | null>(null)
@@ -38,7 +38,11 @@ const MintMockUSDC: React.FC = () => {
     fetchBalance()
   }, [address, loading])
 
-  if (isVisitor || !address || (!isAdmin && !isUser)) return null
+  // Nouvelle logique : afficher si connecté ET (admin OU a un profil de risque)
+  const hasRiskProfile =
+    typeof window !== 'undefined' &&
+    localStorage.getItem('kinoshi-risk-profile') !== null
+  if (isVisitor || !address || (!isAdmin && !hasRiskProfile)) return null
 
   const handleMint = async () => {
     setLoading(true)

@@ -9,7 +9,7 @@ interface RequireAuthProps {
 }
 
 const RequireAuth = ({ children, adminOnly, userOnly }: RequireAuthProps) => {
-  const { isAdmin, isUser, isVisitor, loadingRole } = useUser()
+  const { isAdmin, isVisitor, loadingRole } = useUser()
   const router = useRouter()
 
   useEffect(() => {
@@ -19,12 +19,18 @@ const RequireAuth = ({ children, adminOnly, userOnly }: RequireAuthProps) => {
       return
     }
 
+    // Pour les pages userOnly, vérifier que l'utilisateur a un profil de risque
+    if (userOnly && !loadingRole && isVisitor) {
+      router.replace('/unauthorized')
+      return
+    }
+
     // Pour les autres pages, ne pas bloquer les utilisateurs connectés
     // isVisitor = non connecté, donc on ne bloque que si vraiment pas connecté
-    if (!loadingRole && isVisitor) {
+    if (!adminOnly && !userOnly && !loadingRole && isVisitor) {
       router.replace('/unauthorized')
     }
-  }, [isVisitor, loadingRole, router, adminOnly, isAdmin])
+  }, [isVisitor, loadingRole, router, adminOnly, userOnly, isAdmin])
 
   if (loadingRole) {
     return (
@@ -41,8 +47,13 @@ const RequireAuth = ({ children, adminOnly, userOnly }: RequireAuthProps) => {
     return null
   }
 
+  // Pour les pages userOnly, bloquer si pas connecté
+  if (userOnly && isVisitor) {
+    return null
+  }
+
   // Pour les autres pages, ne pas bloquer les utilisateurs connectés
-  if (isVisitor) {
+  if (!adminOnly && !userOnly && isVisitor) {
     return null
   }
 

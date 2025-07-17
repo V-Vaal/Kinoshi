@@ -2,7 +2,6 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import Image from 'next/image'
 import { useUser } from '@/context/UserContext'
 import { usePathname } from 'next/navigation'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useDisconnect } from 'wagmi'
 import { useRouter } from 'next/navigation'
 
@@ -53,7 +52,7 @@ const Header = () => {
   }
 
   return (
-    <header className="w-full flex justify-center mt-4 mb-8">
+    <header className="w-full flex justify-center mt-4">
       <div className="max-w-7xl w-full bg-[#FAFAF7] border border-[var(--kinoshi-accent)]/40 shadow-2xl flex items-center px-6 py-4 rounded-2xl">
         {/* Logo - plus compact */}
         <div className="flex items-center w-32">
@@ -69,60 +68,50 @@ const Header = () => {
 
         {/* Navigation centrée avec plus d'espace */}
         <div className="flex-1 flex justify-center px-8">
-          <Tabs value={getActiveTab()} className="w-full max-w-2xl">
-            <TabsList className="grid w-full grid-cols-4 h-12 bg-[var(--kinoshi-accent)]/20 border border-[var(--kinoshi-accent)]/30">
-              <TabsTrigger
-                value="portefeuille"
-                data-state={isActiveTab('portefeuille') ? 'active' : 'inactive'}
-                className={`font-serif font-extrabold text-base cursor-pointer transition-all duration-200 ${
-                  isActiveTab('portefeuille')
-                    ? 'bg-[var(--kinoshi-accent)]/60 scale-105 shadow-sm'
-                    : 'hover:bg-[var(--kinoshi-accent)]/40 hover:scale-105'
-                } ${!hasProfile && !isAdmin ? 'opacity-50 pointer-events-none' : ''}`}
-                onClick={() => (window.location.href = '/portefeuille')}
-              >
-                Portefeuille
-              </TabsTrigger>
-              <TabsTrigger
-                value="a-propos"
-                data-state={isActiveTab('a-propos') ? 'active' : 'inactive'}
-                className={`font-serif font-extrabold text-base cursor-pointer transition-all duration-200 ${
-                  isActiveTab('a-propos')
-                    ? 'bg-[var(--kinoshi-accent)]/60 scale-105 shadow-sm'
-                    : 'hover:bg-[var(--kinoshi-accent)]/40 hover:scale-105'
-                } ${!hasProfile && !isAdmin ? 'opacity-50 pointer-events-none' : ''}`}
-                onClick={() => (window.location.href = '/a-propos')}
-              >
-                À propos
-              </TabsTrigger>
-              <TabsTrigger
-                value="profil"
-                data-state={isActiveTab('profil') ? 'active' : 'inactive'}
-                className={`font-serif font-extrabold text-base cursor-pointer transition-all duration-200 ${
-                  isActiveTab('profil')
-                    ? 'bg-[var(--kinoshi-accent)]/60 scale-105 shadow-sm'
-                    : 'hover:bg-[var(--kinoshi-accent)]/40 hover:scale-105'
-                }`}
-                onClick={() =>
-                  (window.location.href = '/votre-profil-investisseur')
-                }
-              >
-                Profil
-              </TabsTrigger>
-              <TabsTrigger
-                value="investir"
-                data-state={isActiveTab('investir') ? 'active' : 'inactive'}
-                className={`font-serif font-extrabold text-base cursor-pointer transition-all duration-200 ${
-                  isActiveTab('investir')
-                    ? 'bg-[var(--kinoshi-accent)]/60 scale-105 shadow-sm'
-                    : 'hover:bg-[var(--kinoshi-accent)]/40 hover:scale-105'
-                } ${!hasProfile && !isAdmin ? 'opacity-50 pointer-events-none' : ''}`}
-                onClick={() => (window.location.href = '/investir')}
-              >
-                Investir
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="grid w-full max-w-2xl grid-cols-4 h-12 bg-[var(--kinoshi-accent)]/20 border border-[var(--kinoshi-accent)]/30 rounded-lg p-1">
+            <button
+              className={`font-serif font-extrabold text-base cursor-pointer transition-all duration-200 rounded-md ${
+                isActiveTab('portefeuille')
+                  ? 'bg-[var(--kinoshi-accent)]/60 scale-105 shadow-sm'
+                  : 'hover:bg-[var(--kinoshi-accent)]/40 hover:scale-105'
+              } ${!hasProfile && !isAdmin ? 'opacity-50 pointer-events-none' : ''}`}
+              onClick={() => (window.location.href = '/portefeuille')}
+            >
+              Portefeuille
+            </button>
+            <button
+              className={`font-serif font-extrabold text-base cursor-pointer transition-all duration-200 rounded-md ${
+                isActiveTab('a-propos')
+                  ? 'bg-[var(--kinoshi-accent)]/60 scale-105 shadow-sm'
+                  : 'hover:bg-[var(--kinoshi-accent)]/40 hover:scale-105'
+              } ${!hasProfile && !isAdmin ? 'opacity-50 pointer-events-none' : ''}`}
+              onClick={() => (window.location.href = '/a-propos')}
+            >
+              À propos
+            </button>
+            <button
+              className={`font-serif font-extrabold text-base cursor-pointer transition-all duration-200 rounded-md ${
+                isActiveTab('profil')
+                  ? 'bg-[var(--kinoshi-accent)]/60 scale-105 shadow-sm'
+                  : 'hover:bg-[var(--kinoshi-accent)]/40 hover:scale-105'
+              }`}
+              onClick={() =>
+                (window.location.href = '/votre-profil-investisseur')
+              }
+            >
+              Profil
+            </button>
+            <button
+              className={`font-serif font-extrabold text-base cursor-pointer transition-all duration-200 rounded-md ${
+                isActiveTab('investir')
+                  ? 'bg-[var(--kinoshi-accent)]/60 scale-105 shadow-sm'
+                  : 'hover:bg-[var(--kinoshi-accent)]/40 hover:scale-105'
+              } ${!hasProfile && !isAdmin ? 'opacity-50 pointer-events-none' : ''}`}
+              onClick={() => (window.location.href = '/investir')}
+            >
+              Investir
+            </button>
+          </div>
         </div>
 
         {/* ConnectButton, badge et déconnexion - plus compact */}

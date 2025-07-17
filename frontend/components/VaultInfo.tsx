@@ -3,6 +3,8 @@
 import React from 'react'
 import { formatUnits } from 'viem'
 import { useVault } from '@/context/VaultContext'
+import { useAccount, useBalance } from 'wagmi'
+import { mockTokenAddresses } from '@/constants'
 import {
   KinoshiCard,
   KinoshiCardHeader,
@@ -17,6 +19,13 @@ interface VaultInfoProps {
 
 const VaultInfo: React.FC<VaultInfoProps> = ({ className }) => {
   const { totalAssets, userShares, decimals } = useVault()
+  const { address } = useAccount()
+
+  // Récupération du solde mUSDC
+  const { data: usdcBalance } = useBalance({
+    address,
+    token: mockTokenAddresses.mUSDC as `0x${string}`,
+  })
 
   // Skeleton simple
   const Skeleton = () => (
@@ -41,6 +50,20 @@ const VaultInfo: React.FC<VaultInfoProps> = ({ className }) => {
     }
   }
 
+  // Formattage du solde USDC
+  const formatUSDCBalance = (): string => {
+    if (!usdcBalance) return '—'
+    try {
+      const formatted = Number(usdcBalance.formatted)
+      return `${formatted.toLocaleString('fr-FR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })} USDC`
+    } catch {
+      return 'Erreur'
+    }
+  }
+
   // Badge démo (à adapter selon logique réelle)
   const isDemo = true
 
@@ -49,7 +72,7 @@ const VaultInfo: React.FC<VaultInfoProps> = ({ className }) => {
       <KinoshiCardHeader className="flex flex-row items-center gap-2">
         <KinoshiCardTitle>Votre investissement</KinoshiCardTitle>
         {isDemo && (
-          <KinoshiBadge variant="warning">Prix fictif (démo)</KinoshiBadge>
+          <KinoshiBadge variant="warning">USDC fictif (démo)</KinoshiBadge>
         )}
       </KinoshiCardHeader>
       <KinoshiCardContent>
@@ -68,7 +91,7 @@ const VaultInfo: React.FC<VaultInfoProps> = ({ className }) => {
           </div>
           <div>
             <div className="text-xs font-sans text-[var(--kinoshi-text)]/70 mb-1">
-              Vos parts détenues
+              Vos parts détenues dans le vault
             </div>
             <div className="text-xl font-mono font-semibold text-[var(--kinoshi-text)]">
               {userShares === null || decimals === null ? (
@@ -76,6 +99,14 @@ const VaultInfo: React.FC<VaultInfoProps> = ({ className }) => {
               ) : (
                 formatValue(userShares, decimals)
               )}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-sans text-[var(--kinoshi-text)]/70 mb-1">
+              Solde disponible
+            </div>
+            <div className="text-xl font-mono font-semibold text-green-500">
+              {!address ? <Skeleton /> : formatUSDCBalance()}
             </div>
           </div>
         </div>
