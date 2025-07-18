@@ -8,11 +8,7 @@ import React, {
   ReactNode,
 } from 'react'
 import { useAccount } from 'wagmi'
-import { readContract } from 'wagmi/actions'
-import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
-import vaultAbiJson from '@/abis/Vault.abi.json'
-import { vaultAddress } from '@/constants'
-import type { Abi } from 'viem'
+import { useVaultRoles } from '@/utils/useVaultRoles'
 
 export type Strategie = 'equilibree' | 'sure' | 'dynamique'
 
@@ -37,48 +33,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const { address, isConnected } = useAccount()
   const [strategie, setStrategie] = useState<Strategie>('equilibree')
   const [montantInvesti, setMontantInvesti] = useState<number>(0)
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [isUser, setIsUser] = useState(false)
-  const [loadingRole, setLoadingRole] = useState(false)
 
-  useEffect(() => {
-    const fetchRole = async () => {
-      if (!address || !isConnected) {
-        setIsAdmin(false)
-        setIsUser(false)
-        setLoadingRole(false)
-        return
-      }
-      setLoadingRole(true)
-      try {
-        const abi = (vaultAbiJson.abi ?? vaultAbiJson) as Abi
-        const admin = await readContract(wagmiConfig, {
-          abi,
-          address: vaultAddress as `0x${string}`,
-          functionName: 'isAdmin',
-          args: [address],
-        })
-        const whitelisted = await readContract(wagmiConfig, {
-          abi,
-          address: vaultAddress as `0x${string}`,
-          functionName: 'isWhitelisted',
-          args: [address],
-        })
-        setIsAdmin(Boolean(admin))
-        setIsUser(Boolean(whitelisted))
-      } catch (e) {
-        setIsAdmin(false)
-        setIsUser(false)
-      } finally {
-        setLoadingRole(false)
-      }
-    }
-    fetchRole()
-  }, [address, isConnected])
+  // Utiliser le hook useVaultRoles pour récupérer les rôles
+  const { isAdmin, isWhitelisted, loading: loadingRole } = useVaultRoles()
 
   // Un utilisateur connecté est considéré comme "user" même s'il n'est pas whitelisté
   // isWhitelisted est conservé comme information technique uniquement
   const isVisitor = !isConnected
+  const isUser = isWhitelisted // Utiliser isWhitelisted du hook
   const isAuthorized = () => isConnected
 
   return (

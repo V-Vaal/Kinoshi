@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -10,8 +10,11 @@ import "./errors.sol";
 import "./TokenRegistry.sol";
 import "./interfaces/IPriceOracle.sol";
 
-contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
+contract Vault is ERC4626, AccessControl, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
+    
+    // Rôles AccessControl
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     
     struct AssetAllocation {
         address token;
@@ -33,8 +36,11 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     address public feeReceiver;
     uint256 public treasuryBalance;
 
-    mapping(address => bool) public isAdmin;
     mapping(address => bool) public isWhitelisted;
+
+    // Variables pour la gestion des frais de gestion
+    uint256 public lastManagementFeeTimestamp;
+    uint256 public constant MANAGEMENT_FEE_COOLDOWN = 1 days; // 24h minimum entre les frais
 
     event Deposited(address indexed user, uint256 amount);
     event WithdrawExecuted(address indexed user, address indexed receiver, uint256 assets);
@@ -45,19 +51,27 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
     event TreasuryWithdrawn(address indexed to, uint256 amount);
     event FeesUpdated(uint256 exitFeeBps, uint256 managementFeeBps);
     event VaultBootstrapped(uint256 assets, uint256 shares);
+    event ManagementFeeScheduled(uint256 timestamp, uint256 shares, uint256 totalSupply);
 
     constructor(IERC20 asset_, string memory label, address treasury_, TokenRegistry registry_, IPriceOracle oracle_)
         ERC4626(asset_)
         ERC20("Kinoshi Vault Share", "KNSHVS")
-        Ownable(msg.sender)
+        AccessControl()
         Pausable()
         ReentrancyGuard()
     {
+        if (treasury_ == address(0)) revert ZeroAddress();
+        if (address(registry_) == address(0)) revert ZeroAddress();
+        if (address(oracle_) == address(0)) revert ZeroAddress();
+
         strategyLabel = label;
         treasury = treasury_;
         registry = registry_;
         oracle = oracle_;
-        isAdmin[msg.sender] = true;
+        
+        // Définir le déployeur comme DEFAULT_ADMIN_ROLE et ADMIN_ROLE
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(ADMIN_ROLE, msg.sender);
     }
 
     function normalizeAmount(uint256 amount, uint8 decimals) internal pure returns (uint256) {
@@ -68,7 +82,7 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         return decimals == 18 ? amount : decimals < 18 ? amount / (10 ** (18 - decimals)) : amount * (10 ** (decimals - 18));
     }
 
-    function setAllocations(AssetAllocation[] memory newAllocations) external onlyAdmin {
+    function setAllocations(AssetAllocation[] memory newAllocations) external onlyRole(ADMIN_ROLE) {
         require(newAllocations.length > 0, "Allocations cannot be empty");
         delete allocations;
         uint256 totalWeight;
@@ -88,7 +102,7 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         return allocations;
     }
 
-    function setFees(uint256 _exitFeeBps, uint256 _managementFeeBps) external onlyAdmin {
+    function setFees(uint256 _exitFeeBps, uint256 _managementFeeBps) external onlyRole(ADMIN_ROLE) {
         require(_exitFeeBps <= MAX_FEE_BPS, "Exit fee too high");
         require(_managementFeeBps <= MAX_FEE_BPS, "Management fee too high");
         exitFeeBps = _exitFeeBps;
@@ -96,7 +110,7 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         emit FeesUpdated(_exitFeeBps, _managementFeeBps);
     }
 
-    function bootstrapVault() external onlyOwner {
+    function bootstrapVault() external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (totalSupply() > 0) revert VaultAlreadyBootstrapped();
         uint256 amount = 200e6;
         
@@ -114,22 +128,65 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         emit Deposited(treasury, amount);
     }
 
-    function setFeeReceiver(address newReceiver) external onlyOwner {
+    function setFeeReceiver(address newReceiver) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (newReceiver == address(0)) revert ZeroAddress();
         feeReceiver = newReceiver;
     }
 
-    function accrueManagementFee(uint256 shares) external onlyOwner {
+    function calculateManagementFee() external view returns (uint256) {
+        if (managementFeeBps == 0 || totalSupply() == 0) return 0;
+        
+        // Calculer les frais basés sur le totalSupply et managementFeeBps
+        uint256 feeShares = (totalSupply() * managementFeeBps) / 10_000;
+        return feeShares;
+    }
+
+    function accrueManagementFee(uint256 shares) external onlyRole(ADMIN_ROLE) {
+        _accrueManagementFee(shares);
+    }
+
+    function scheduleManagementFee() external onlyRole(ADMIN_ROLE) {
+        if (feeReceiver == address(0)) revert ZeroAddress();
+        if (managementFeeBps == 0) revert ManagementFeeNotConfigured();
+        
+        uint256 feeShares = this.calculateManagementFee();
+        if (feeShares == 0) revert InvalidAmount();
+        
+        // Appeler accrueManagementFeeInternal directement
+        _accrueManagementFee(feeShares);
+    }
+
+    function _accrueManagementFee(uint256 shares) internal {
         if (shares == 0) revert InvalidAmount();
+        if (feeReceiver == address(0)) revert ZeroAddress();
+        
+        // Vérifier le cooldown (24h minimum entre les frais)
+        if (lastManagementFeeTimestamp > 0) {
+            if (block.timestamp < lastManagementFeeTimestamp + MANAGEMENT_FEE_COOLDOWN) {
+                revert ManagementFeeCooldownNotMet();
+            }
+        }
+        
+        // Mettre à jour le timestamp
+        lastManagementFeeTimestamp = block.timestamp;
+        
+        // Mint des shares au fee receiver
         _mint(feeReceiver, shares);
+        
+        // Émettre les events
         emit ManagementFeeAccrued(feeReceiver, shares);
+        emit ManagementFeeScheduled(block.timestamp, shares, totalSupply());
     }
 
-    function setAdmin(address _addr, bool _status) external onlyOwner {
-        isAdmin[_addr] = _status;
+    function setAdmin(address _addr, bool _status) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_status) {
+            _grantRole(ADMIN_ROLE, _addr);
+        } else {
+            _revokeRole(ADMIN_ROLE, _addr);
+        }
     }
 
-    function setWhitelisted(address _addr, bool _status) external onlyOwner {
+    function setWhitelisted(address _addr, bool _status) external onlyRole(ADMIN_ROLE) {
         isWhitelisted[_addr] = _status;
     }
 
@@ -193,7 +250,7 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         return assetsAfterFee;
     }
 
-    function withdrawTreasury(address to, uint256 amount) external onlyAdmin {
+    function withdrawTreasury(address to, uint256 amount) external onlyRole(ADMIN_ROLE) {
         require(to != address(0), "Invalid address");
         require(amount <= treasuryBalance, "Insufficient funds");
         treasuryBalance -= amount;
@@ -257,16 +314,11 @@ contract Vault is ERC4626, Ownable, Pausable, ReentrancyGuard {
         _;
     }
 
-    modifier onlyAdmin() {
-        require(isAdmin[msg.sender], "Not admin");
-        _;
-    }
-
-    function pause() external onlyOwner {
+    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _pause();
     }
 
-    function unpause() external onlyOwner {
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
     }
 }

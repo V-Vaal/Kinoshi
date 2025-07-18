@@ -287,11 +287,14 @@ describe("Vault.sol – Core", function () {
       expect(await vault.managementFeeBps()).to.equal(newManagementFeeBps);
     });
 
-    it("revert si un non-owner tente de modifier les frais", async function () {
+    it("revert si un non-admin tente de modifier les frais", async function () {
       const { vault, user1 } = await loadFixture(deployVaultFixture);
 
-      await expect(vault.connect(user1).setFees(100, 50)).to.be.revertedWith(
-        "Not admin"
+      await expect(
+        vault.connect(user1).setFees(100, 50)
+      ).to.be.revertedWithCustomError(
+        vault,
+        "AccessControlUnauthorizedAccount"
       );
     });
 
