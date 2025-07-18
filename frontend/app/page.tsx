@@ -4,8 +4,7 @@ import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import Image from 'next/image'
 import Dashboard from '@/components/Dashboard'
-import DepositForm from '@/components/DepositForm'
-import RouteGuard from '@/components/RouteGuard'
+import AuthGuard from '@/components/AuthGuard'
 import { useUser } from '@/context/UserContext'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -24,10 +23,12 @@ export default function HomePage() {
   if (!isConnected) {
     return (
       <div
-        className="w-full pt-20 min-h-screen bg-cover bg-center flex items-center justify-center"
+        className="w-full min-h-screen bg-cover bg-center flex items-center justify-center relative"
         style={{ backgroundImage: "url('/assets/background-kinoshi.jpg')" }}
       >
-        <div className="bg-white/20 backdrop-blur-xl rounded-3xl shadow-2xl max-w-3xl w-full mx-4 p-8 flex flex-col gap-8">
+        {/* Overlay pour améliorer la lisibilité */}
+        <div className="absolute inset-0 bg-black/20"></div>
+        <div className="relative z-10 bg-white/25 backdrop-blur-xl rounded-3xl shadow-2xl max-w-3xl w-full mx-4 p-8 flex flex-col gap-8 border border-white/20">
           <div>
             <h1
               className="text-3xl sm:text-5xl md:text-6xl font-serif font-extrabold text-[var(--kinoshi-surface)] drop-shadow-lg mb-4 tracking-tight text-center"
@@ -80,14 +81,14 @@ export default function HomePage() {
   }
 
   return (
-    <RouteGuard>
+    <AuthGuard>
       <div className="w-full">
-        <div className="flex justify-center items-center min-h-[220px] mb-8">
-          <div className="relative px-6 sm:px-10 py-10 sm:py-12 rounded-3xl bg-white/10 border border-[var(--kinoshi-accent)]/40 backdrop-blur-xl shadow-2xl max-w-3xl w-full mx-4">
-            <h1 className="text-3xl sm:text-5xl md:text-6xl font-serif font-extrabold text-[var(--kinoshi-accent)] drop-shadow-lg mb-4 tracking-tight text-center">
+        <div className="flex justify-center items-center min-h-[180px] mb-8">
+          <div className="relative px-6 sm:px-10 py-8 sm:py-10 rounded-3xl bg-white/15 border border-[var(--kinoshi-accent)]/30 backdrop-blur-xl shadow-2xl max-w-4xl w-full mx-4">
+            <h1 className="text-3xl sm:text-5xl md:text-6xl font-serif font-extrabold text-white drop-shadow-lg mb-4 tracking-tight text-center">
               Bienvenue sur Kinoshi
             </h1>
-            <p className="text-lg font-sans font-medium text-white/90 tracking-wide text-center">
+            <p className="text-lg font-sans font-medium text-white/95 tracking-wide text-center">
               Investissez simplement : des actifs réels et choisis pour un
               placement réfléchi.
             </p>
@@ -95,16 +96,7 @@ export default function HomePage() {
         </div>
 
         <Dashboard />
-
-        <div className="mt-8">
-          <div className="bg-[#FAFAF7] rounded-2xl p-6 shadow-lg border border-[var(--kinoshi-gold)]/40">
-            <h3 className="text-xl font-serif font-extrabold text-[var(--kinoshi-text)] mb-4">
-              Effectuer un dépôt
-            </h3>
-            <DepositForm />
-          </div>
-        </div>
       </div>
-    </RouteGuard>
+    </AuthGuard>
   )
 }

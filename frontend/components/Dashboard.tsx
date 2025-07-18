@@ -13,8 +13,6 @@ import {
   Progress,
 } from '@/components/ui'
 import { RefreshCw, Users, Coins, Shield } from 'lucide-react'
-import UserDashboard from './UserDashboard'
-
 const Dashboard: React.FC = () => {
   const { totalAssets, userShares, decimals, fetchVaultData } = useVault()
 
@@ -50,7 +48,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="w-full space-y-6">
-      <UserDashboard />
       {/* Header Card */}
       <KinoshiCard variant="elevated">
         <KinoshiCardHeader>

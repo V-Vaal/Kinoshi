@@ -11,7 +11,7 @@ import {
 } from '@/components/ui'
 import MintMockUSDC from '@/components/MintMockUSDC'
 import StrategySelector from '@/components/StrategySelector'
-import RequireAuth from '@/components/RequireAuth'
+import AuthGuard from '@/components/AuthGuard'
 import { useUser } from '@/context/UserContext'
 import { useRouter } from 'next/navigation'
 
@@ -86,15 +86,15 @@ const ProfilePage: React.FC = () => {
   // Si on doit afficher le formulaire, on utilise le composant existant
   if (showForm) {
     return (
-      <RequireAuth userOnly>
+      <AuthGuard requireProfile={false}>
         <RiskProfileForm />
-      </RequireAuth>
+      </AuthGuard>
     )
   }
 
   // Sinon on affiche le résumé du profil
   return (
-    <RequireAuth userOnly>
+    <AuthGuard requireProfile={false}>
       <div className="container mx-auto px-4 py-8">
         <KinoshiCard variant="outlined" className="max-w-2xl mx-auto">
           <KinoshiCardHeader>
@@ -111,6 +111,14 @@ const ProfilePage: React.FC = () => {
               <p className="text-[var(--kinoshi-text)]/90 font-sans font-medium leading-relaxed">
                 {riskProfile ? getProfileMessage(riskProfile.profile) : ''}
               </p>
+
+              {/* Texte explicatif ajouté */}
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-800 font-medium">
+                  💡 Changer votre profil changera votre stratégie
+                  d'investissement.
+                </p>
+              </div>
             </div>
 
             <div className="pt-4 border-t border-[var(--kinoshi-border)]/30">
@@ -134,10 +142,21 @@ const ProfilePage: React.FC = () => {
             </div>
             <MintMockUSDC />
             <StrategySelector />
+
+            {/* Bouton ajouté */}
+            <div className="pt-4 border-t border-[var(--kinoshi-border)]/30">
+              <KinoshiButton
+                onClick={() => (window.location.href = '/portefeuille')}
+                className="w-full"
+                size="lg"
+              >
+                Accéder à mon portefeuille Kinoshi
+              </KinoshiButton>
+            </div>
           </KinoshiCardContent>
         </KinoshiCard>
       </div>
-    </RequireAuth>
+    </AuthGuard>
   )
 }
 

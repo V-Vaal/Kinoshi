@@ -1,6 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600&family=Spectral:wght@400;500;600;700&family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
 @import 'tailwindcss';
-@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -130,6 +128,5 @@
   }
   body {
     @apply bg-background text-foreground;
-    background: #566243 !important;
   }
 }
