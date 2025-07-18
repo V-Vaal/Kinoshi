@@ -10,6 +10,10 @@ import "./errors.sol";
 import "./TokenRegistry.sol";
 import "./interfaces/IPriceOracle.sol";
 
+interface IERC20Burnable {
+    function burn(address from, uint256 amount) external;
+}
+
 contract Vault is ERC4626, AccessControl, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     
@@ -211,21 +215,14 @@ contract Vault is ERC4626, AccessControl, Pausable, ReentrancyGuard {
             require(success, "Mint RWA failed");
             emit Allocated(allocation.token, allocationAmount);
         }
+        // 🔥 Supprime les USDC déposés pour ne pas fausser totalAssets()
+            IERC20Burnable(address(asset())).burn(msg.sender, assets);
         return shares;
     }
 
-    function withdraw(uint256 assets, address receiver, address owner)
-        public
-        whenNotPausedCustom
-        nonReentrant
-        override
-        returns (uint256)
-    {
-        if (assets == 0) revert InvalidAmount();
-        if (assets < MINIMUM_AMOUNT && assets != totalAssets()) revert MinimumWithdrawNotMet(MINIMUM_AMOUNT);
-        uint256 shares = super.withdraw(assets, receiver, owner);
-        emit WithdrawExecuted(owner, receiver, assets);
-        return shares;
+    /// @notice Désactivé : le Vault ne détient jamais d'USDC (brûlés au dépôt). Utilisez redeem() pour retirer vos parts.
+    function withdraw(uint256, address, address) public pure override returns (uint256) {
+        revert WithdrawNotSupported();
     }
 
     function redeem(uint256 shares, address receiver, address owner)
@@ -261,41 +258,43 @@ contract Vault is ERC4626, AccessControl, Pausable, ReentrancyGuard {
     function _getAssetValue(address token, uint256 balance) internal view returns (uint256) {
         if (balance == 0) return 0;
         (uint256 price, uint8 priceDecimals) = oracle.getPrice(token);
-        uint8 tokenDecimals = registry.getTokenDecimals(token);
         uint256 normalizedPrice = normalizeAmount(price, priceDecimals);
         uint256 valueIn18Decimals = (balance * normalizedPrice) / 1e18;
         return denormalizeAmount(valueIn18Decimals, 6);
     }
 
     function totalAssets() public view override returns (uint256) {
-        if (totalSupply() > 0 && IERC20(asset()).balanceOf(address(this)) > 0) {
-            bool hasRWA = false;
-            for (uint256 i = 0; i < allocations.length; i++) {
-                if (allocations[i].active && allocations[i].token != asset()) {
-                    if (IERC20(allocations[i].token).balanceOf(address(this)) > 0) {
-                        hasRWA = true;
-                        break;
-                    }
+    if (totalSupply() > 0 && IERC20(asset()).balanceOf(address(this)) > 0) {
+        bool hasRWA = false;
+        for (uint256 i = 0; i < allocations.length; i++) {
+            if (allocations[i].active && allocations[i].token != asset()) {
+                if (IERC20(allocations[i].token).balanceOf(address(this)) > 0) {
+                    hasRWA = true;
+                    break;
                 }
             }
-            if (!hasRWA) {
-                return IERC20(asset()).balanceOf(address(this));
-            }
         }
-        uint256 totalValue = 0;
-        for (uint256 i = 0; i < allocations.length; i++) {
-            AssetAllocation memory allocation = allocations[i];
-            if (allocation.active) {
-                uint256 balance = IERC20(allocation.token).balanceOf(address(this));
-                uint8 tokenDecimals = registry.getTokenDecimals(allocation.token);
-                uint256 normalizedBalance = normalizeAmount(balance, tokenDecimals);
-                uint256 assetValue = _getAssetValue(allocation.token, normalizedBalance);
-                uint256 weightedValue = (assetValue * allocation.weight) / 1e18;
-                totalValue += weightedValue;
-            }
+        if (!hasRWA) {
+            return IERC20(asset()).balanceOf(address(this));
         }
-        return totalValue;
     }
+
+    uint256 totalValue = 0;
+    for (uint256 i = 0; i < allocations.length; i++) {
+        AssetAllocation memory allocation = allocations[i];
+        if (allocation.active) {
+            uint256 balance = IERC20(allocation.token).balanceOf(address(this));
+            uint256 normalizedBalance = normalizeAmount(
+                balance,
+                registry.getTokenDecimals(allocation.token)            );
+            uint256 assetValue = _getAssetValue(allocation.token, normalizedBalance);
+            uint256 weightedValue = (assetValue * allocation.weight) / 1e18;
+            totalValue += weightedValue;
+        }
+    }
+
+    return totalValue;
+}
 
     function _decimalsOffset() internal pure override returns (uint8) {
         return 12;

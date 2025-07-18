@@ -122,45 +122,6 @@ const Dashboard: React.FC = () => {
         </KinoshiCard>
       </div>
 
-      {/* Technical Info Card */}
-      <KinoshiCard variant="outlined">
-        <KinoshiCardHeader>
-          <KinoshiCardTitle className="text-lg">
-            Informations techniques
-          </KinoshiCardTitle>
-        </KinoshiCardHeader>
-        <KinoshiCardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-            <div className="space-y-2">
-              <div className="text-[var(--kinoshi-text)]/90 font-sans font-medium">
-                Décimales du token
-              </div>
-              <div className="font-mono font-medium text-[var(--kinoshi-text)]">
-                {decimals !== null ? decimals : 'Non disponible'}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-[var(--kinoshi-text)]/90 font-sans font-medium">
-                Total Assets (raw)
-              </div>
-              <div className="font-mono text-xs text-[var(--kinoshi-text)] break-all">
-                {totalAssets !== null
-                  ? totalAssets.toString()
-                  : 'Non disponible'}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-[var(--kinoshi-text)]/90 font-sans font-medium">
-                User Shares (raw)
-              </div>
-              <div className="font-mono text-xs text-[var(--kinoshi-text)] break-all">
-                {userShares !== null ? userShares.toString() : 'Non disponible'}
-              </div>
-            </div>
-          </div>
-        </KinoshiCardContent>
-      </KinoshiCard>
-
       {/* Footer */}
       <div className="text-center">
         <p className="text-sm text-[var(--kinoshi-text)]/90 font-sans font-medium">

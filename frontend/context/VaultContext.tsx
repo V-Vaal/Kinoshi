@@ -25,6 +25,7 @@ const vaultAbi = (vaultAbiJson.abi ?? vaultAbiJson) as Abi
 export interface VaultContextType {
   totalAssets: bigint | null
   userShares: bigint | null
+  totalSupply: bigint | null
   decimals: number | null
   assetDecimals: number | null // Ajout des décimales du token sous-jacent
   previewDeposit: (amount: bigint) => Promise<bigint>
@@ -47,6 +48,7 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
   const chainId = useChainId()
   const [totalAssets, setTotalAssets] = useState<bigint | null>(null)
   const [userShares, setUserShares] = useState<bigint | null>(null)
+  const [totalSupply, setTotalSupply] = useState<bigint | null>(null)
   const [decimals, setDecimals] = useState<number | null>(null)
   const [assetDecimals, setAssetDecimals] = useState<number | null>(null) // Ajout
 
@@ -68,7 +70,7 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
         functionName: 'asset',
       })) as `0x${string}`
 
-      const [assets, shares, dec, assetDec] = await Promise.all([
+      const [assets, shares, dec, assetDec, supply] = await Promise.all([
         readContract(wagmiConfig, {
           abi: vaultAbi,
           address: vaultAddress as `0x${string}`,
@@ -101,15 +103,22 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
           address: assetAddress,
           functionName: 'decimals',
         }) as Promise<number>,
+        readContract(wagmiConfig, {
+          abi: vaultAbi,
+          address: vaultAddress as `0x${string}`,
+          functionName: 'totalSupply',
+        }) as Promise<bigint>,
       ])
       setTotalAssets(assets)
       setUserShares(shares)
+      setTotalSupply(supply)
       setDecimals(dec)
       setAssetDecimals(assetDec)
     } catch (err) {
       console.error('Erreur lors de la récupération des données du Vault:', err)
       setTotalAssets(null)
       setUserShares(null)
+      setTotalSupply(null)
       setDecimals(null)
       setAssetDecimals(null)
     }
@@ -187,6 +196,7 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
   const value: VaultContextType = {
     totalAssets,
     userShares,
+    totalSupply,
     decimals,
     assetDecimals, // Ajout
     previewDeposit,

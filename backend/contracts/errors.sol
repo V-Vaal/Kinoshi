@@ -19,3 +19,4 @@ error MinimumWithdrawNotMet(uint256 min);
 error MinimumRedeemNotMet(uint256 min);
 error ManagementFeeCooldownNotMet();
 error ManagementFeeNotConfigured(); 
+error WithdrawNotSupported(); 

@@ -13,7 +13,6 @@ import MintMockUSDC from '@/components/MintMockUSDC'
 import StrategySelector from '@/components/StrategySelector'
 import AuthGuard from '@/components/AuthGuard'
 import { useUser } from '@/context/UserContext'
-import { useRouter } from 'next/navigation'
 
 interface RiskProfile {
   score: number
@@ -37,14 +36,7 @@ const getProfileMessage = (profile: string): string => {
 const ProfilePage: React.FC = () => {
   const [riskProfile, setRiskProfile] = useState<RiskProfile | null>(null)
   const [showForm, setShowForm] = useState(false)
-  const { isAdmin, loadingRole } = useUser()
-  const router = useRouter()
-
-  useEffect(() => {
-    if (!loadingRole && isAdmin) {
-      router.replace('/admin')
-    }
-  }, [isAdmin, loadingRole, router])
+  const { loadingRole } = useUser()
 
   useEffect(() => {
     let savedProfile: string | null = null
@@ -77,9 +69,6 @@ const ProfilePage: React.FC = () => {
   }
 
   if (loadingRole) {
-    return null
-  }
-  if (isAdmin) {
     return null
   }
 

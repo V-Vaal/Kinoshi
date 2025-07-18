@@ -2,6 +2,7 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { ethers } from "hardhat";
 import { expect } from "chai";
 import { deployVaultFixture } from "./fixtures";
+import type { MockUSDC, Vault } from "../typechain-types";
 
 describe("Vault.sol – Security", function () {
   // Tests de contrôles d'accès déplacés vers Vault.accessControl.test.ts
@@ -114,72 +115,32 @@ describe("Vault.sol – Security", function () {
 
   describe("Vault - Tests de réentrance", function () {
     it("redeem() et withdraw() ont le modifier nonReentrant", async function () {
-      const { vault } = await loadFixture(deployVaultFixture);
-
-      // Vérifier que les fonctions ont le modifier nonReentrant
-      const vaultCode = await ethers.provider.getCode(await vault.getAddress());
-
-      // Vérifier la présence du modifier nonReentrant dans le bytecode
-      // Cette vérification est basique mais suffisante pour confirmer la protection
-      expect(vaultCode).to.not.equal("0x");
-
-      // Test fonctionnel : essayer d'appeler redeem() deux fois de suite
-      // Si nonReentrant fonctionne, le deuxième appel devrait échouer
-      const { mockUSDC, user1 } = await loadFixture(deployVaultFixture);
-
-      // Setup : déposer des fonds
-      const depositAmount = ethers.parseUnits("1000", 6);
-      await mockUSDC.connect(user1).mint(user1.address, depositAmount);
-      await mockUSDC
-        .connect(user1)
-        .approve(await vault.getAddress(), depositAmount);
-      await vault.connect(user1).deposit(depositAmount, user1.address);
-
-      const userShares = await vault.balanceOf(user1.address);
-      const redeemShares = userShares / 2n;
-
-      // Premier appel doit réussir
-      await expect(
-        vault.connect(user1).redeem(redeemShares, user1.address, user1.address)
-      ).to.not.be.reverted;
-
-      // Deuxième appel doit aussi réussir (pas de réentrance ici, juste test de fonctionnement)
-      const remainingShares = await vault.balanceOf(user1.address);
-      if (remainingShares > 0) {
-        await expect(
-          vault
-            .connect(user1)
-            .redeem(remainingShares, user1.address, user1.address)
-        ).to.not.be.reverted;
-      }
-    });
-
-    it("withdraw() fonctionne correctement avec le modifier nonReentrant", async function () {
       const { vault, mockUSDC, user1 } = await loadFixture(deployVaultFixture);
 
       // Setup : déposer des fonds
       const depositAmount = ethers.parseUnits("1000", 6);
-      await mockUSDC.connect(user1).mint(user1.address, depositAmount);
       await mockUSDC
         .connect(user1)
         .approve(await vault.getAddress(), depositAmount);
       await vault.connect(user1).deposit(depositAmount, user1.address);
 
-      const withdrawAmount = ethers.parseUnits("500", 6);
-
-      // Premier appel doit réussir
+      // redeem() doit fonctionner sans reentrancy
       await expect(
         vault
           .connect(user1)
-          .withdraw(withdrawAmount, user1.address, user1.address)
+          .redeem(
+            await vault.balanceOf(user1.address),
+            user1.address,
+            user1.address
+          )
       ).to.not.be.reverted;
 
-      // Deuxième appel doit aussi réussir
+      // withdraw() doit revert avec WithdrawNotSupported
       await expect(
         vault
           .connect(user1)
-          .withdraw(withdrawAmount, user1.address, user1.address)
-      ).to.not.be.reverted;
+          .withdraw(ethers.parseUnits("500", 6), user1.address, user1.address)
+      ).to.be.revertedWithCustomError(vault, "WithdrawNotSupported");
     });
   });
 
@@ -198,15 +159,26 @@ describe("Vault.sol – Security", function () {
       expect(assets).to.eq(0);
     });
 
+    // Helper DRY pour mint + approve
+    async function mintAndApproveMockUSDC(
+      mockUSDC: MockUSDC,
+      user: any,
+      vault: Vault,
+      amount: bigint
+    ) {
+      // Mint 10x le montant pour éviter tout manque de solde
+      await mockUSDC.mint(user.address, amount * 10n);
+      await mockUSDC
+        .connect(user)
+        .approve(await vault.getAddress(), amount * 10n);
+    }
+
     it("totalAssets() gère correctement les grands nombres", async function () {
       const { vault, mockUSDC, user1 } = await loadFixture(deployVaultFixture);
 
       // Dépôt d'un montant très élevé
       const largeAmount = ethers.parseUnits("1000000000", 6); // 1 milliard USDC
-      await mockUSDC.connect(user1).mint(user1.address, largeAmount);
-      await mockUSDC
-        .connect(user1)
-        .approve(await vault.getAddress(), largeAmount);
+      await mintAndApproveMockUSDC(mockUSDC, user1, vault, largeAmount);
       await vault.connect(user1).deposit(largeAmount, user1.address);
 
       const totalAssets = await vault.totalAssets();
@@ -219,10 +191,7 @@ describe("Vault.sol – Security", function () {
 
       // Dépôt d'un montant très élevé
       const largeAmount = ethers.parseUnits("1000000000", 6); // 1 milliard USDC
-      await mockUSDC.connect(user1).mint(user1.address, largeAmount);
-      await mockUSDC
-        .connect(user1)
-        .approve(await vault.getAddress(), largeAmount);
+      await mintAndApproveMockUSDC(mockUSDC, user1, vault, largeAmount);
       await vault.connect(user1).deposit(largeAmount, user1.address);
 
       const totalSupply = await vault.totalSupply();

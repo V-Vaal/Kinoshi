@@ -25,7 +25,7 @@ interface VaultSummaryProps {
 
 const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
   const { address } = useAccount()
-  const { userShares, decimals, assetDecimals, totalAssets } = useVault()
+  const { userShares, assetDecimals, totalAssets, totalSupply } = useVault()
   const { totalDeposited, loading } = useUserInvestmentStats(
     address,
     assetDecimals ?? 6
@@ -68,15 +68,21 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
 
   // Calcul de la valeur du portefeuille et du jeton unique
   useEffect(() => {
-    if (userShares && totalAssets && decimals && assetDecimals) {
+    if (userShares && totalAssets && totalSupply && assetDecimals) {
       try {
         // Valeur du portefeuille = parts * (totalAssets / totalSupply)
-        const totalSupply = userShares // Simplification pour l'exemple
         const portfolioValueBigInt = (userShares * totalAssets) / totalSupply
         const portfolioValueFormatted = formatUnits(
           portfolioValueBigInt,
           assetDecimals
         )
+        console.log('DEBUG:', {
+          userShares: userShares.toString(),
+          totalSupply: totalSupply.toString(),
+          totalAssets: totalAssets.toString(),
+        })
+        console.log('RATIO :', Number(totalAssets) / Number(totalSupply))
+
         setPortfolioValue(portfolioValueFormatted)
 
         // Valeur du jeton unique = totalAssets / totalSupply
@@ -89,7 +95,7 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
         setTokenValue('0')
       }
     }
-  }, [userShares, totalAssets, decimals, assetDecimals])
+  }, [userShares, totalAssets, totalSupply, assetDecimals])
 
   const formatCurrency = (value: string | number) => {
     const numValue = typeof value === 'string' ? parseFloat(value) : value
