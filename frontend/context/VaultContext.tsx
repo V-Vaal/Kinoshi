@@ -28,13 +28,15 @@ export interface VaultContextType {
   userShares: bigint | null
   totalSupply: bigint | null
   decimals: number | null
-  assetDecimals: number | null // Ajout des décimales du token sous-jacent
+  assetDecimals: number | null
   userPortfolioValue: bigint | null // Valeur du portefeuille utilisateur en USDC
+  userPortfolioValueFormatted: string | null // Valeur formatée pour l'affichage
   previewDeposit: (amount: bigint) => Promise<bigint>
   previewRedeem: (shares: bigint) => Promise<bigint>
   deposit: (amount: bigint) => Promise<void>
   redeem: (shares: bigint, receiver: string, owner: string) => Promise<void>
   fetchVaultData: () => Promise<void>
+  refreshUserData: () => Promise<void>
 }
 
 const VaultContext = createContext<VaultContextType | undefined>(undefined)
@@ -52,14 +54,15 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
   const [userShares, setUserShares] = useState<bigint | null>(null)
   const [totalSupply, setTotalSupply] = useState<bigint | null>(null)
   const [decimals, setDecimals] = useState<number | null>(null)
-  const [assetDecimals, setAssetDecimals] = useState<number | null>(null) // Ajout
-  const [userPortfolioValue, setUserPortfolioValue] = useState<bigint | null>(
-    null
-  ) // Valeur du portefeuille utilisateur
+  const [assetDecimals, setAssetDecimals] = useState<number | null>(null)
+  const [userPortfolioValue, setUserPortfolioValue] = useState<bigint | null>(null)
+  const [userPortfolioValueFormatted, setUserPortfolioValueFormatted] = useState<string | null>(null)
 
   // Récupère toutes les infos du contrat
   const fetchVaultData = useCallback(async () => {
     try {
+      console.log('🔄 Fetching vault data...')
+      
       // Récupérer d'abord l'adresse du token sous-jacent
       const assetAddress = (await readContract(wagmiConfig, {
         abi: [
@@ -75,6 +78,8 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
         functionName: 'asset',
       })) as `0x${string}`
 
+      console.log('📊 Asset address:', assetAddress)
+
       const [assets, shares, dec, assetDec, supply] = await Promise.all([
         readContract(wagmiConfig, {
           abi: vaultAbi,
@@ -88,13 +93,12 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
               functionName: 'balanceOf',
               args: [address],
             }) as Promise<bigint>)
-          : Promise.resolve(null),
+          : Promise.resolve(0n),
         readContract(wagmiConfig, {
           abi: vaultAbi,
           address: vaultAddress as `0x${string}`,
           functionName: 'decimals',
         }) as Promise<number>,
-        // Récupérer les décimales du token sous-jacent
         readContract(wagmiConfig, {
           abi: [
             {
@@ -114,6 +118,15 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
           functionName: 'totalSupply',
         }) as Promise<bigint>,
       ])
+
+      console.log('📈 Vault data:', {
+        totalAssets: formatUnits(assets, assetDec),
+        userShares: formatUnits(shares, dec),
+        totalSupply: formatUnits(supply, dec),
+        decimals: dec,
+        assetDecimals: assetDec
+      })
+
       setTotalAssets(assets)
       setUserShares(shares)
       setTotalSupply(supply)
@@ -121,8 +134,9 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
       setAssetDecimals(assetDec)
 
       // Calculer la valeur du portefeuille utilisateur
-      if (shares && shares > 0n) {
+      if (shares && shares > 0n && assets > 0n && supply > 0n) {
         try {
+          // Méthode 1: Utiliser convertToAssets
           const portfolioValue = (await readContract(wagmiConfig, {
             abi: vaultAbi,
             address: vaultAddress as `0x${string}`,
@@ -130,24 +144,86 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
             args: [shares],
           })) as bigint
 
+          console.log('💰 Portfolio value (convertToAssets):', formatUnits(portfolioValue, assetDec))
           setUserPortfolioValue(portfolioValue)
+          setUserPortfolioValueFormatted(formatUnits(portfolioValue, assetDec))
         } catch (err) {
-          console.error('Erreur lors du calcul de userPortfolioValue:', err)
-          setUserPortfolioValue(null)
+          console.error('❌ Erreur convertToAssets:', err)
+          
+          // Méthode 2: Calcul manuel (shares * totalAssets / totalSupply)
+          try {
+            const portfolioValue = (shares * assets) / supply
+            console.log('💰 Portfolio value (manual):', formatUnits(portfolioValue, assetDec))
+            setUserPortfolioValue(portfolioValue)
+            setUserPortfolioValueFormatted(formatUnits(portfolioValue, assetDec))
+          } catch (calcErr) {
+            console.error('❌ Erreur calcul manuel:', calcErr)
+            setUserPortfolioValue(null)
+            setUserPortfolioValueFormatted(null)
+          }
         }
       } else {
-        setUserPortfolioValue(null)
+        console.log('📊 No shares or invalid data, setting portfolio to 0')
+        setUserPortfolioValue(0n)
+        setUserPortfolioValueFormatted('0')
       }
     } catch (err) {
-      console.error('Erreur lors de la récupération des données du Vault:', err)
+      console.error('❌ Erreur lors de la récupération des données du Vault:', err)
       setTotalAssets(null)
       setUserShares(null)
       setTotalSupply(null)
       setDecimals(null)
       setAssetDecimals(null)
       setUserPortfolioValue(null)
+      setUserPortfolioValueFormatted(null)
     }
   }, [address])
+
+  // Fonction pour rafraîchir uniquement les données utilisateur
+  const refreshUserData = useCallback(async () => {
+    if (!address) return
+    
+    try {
+      console.log('🔄 Refreshing user data...')
+      
+      const [shares, assets, supply, assetDec] = await Promise.all([
+        readContract(wagmiConfig, {
+          abi: vaultAbi,
+          address: vaultAddress as `0x${string}`,
+          functionName: 'balanceOf',
+          args: [address],
+        }) as Promise<bigint>,
+        readContract(wagmiConfig, {
+          abi: vaultAbi,
+          address: vaultAddress as `0x${string}`,
+          functionName: 'totalAssets',
+        }) as Promise<bigint>,
+        readContract(wagmiConfig, {
+          abi: vaultAbi,
+          address: vaultAddress as `0x${string}`,
+          functionName: 'totalSupply',
+        }) as Promise<bigint>,
+        assetDecimals || 18
+      ])
+
+      setUserShares(shares)
+      setTotalAssets(assets)
+      setTotalSupply(supply)
+
+      // Recalculer la valeur du portefeuille
+      if (shares && shares > 0n && assets > 0n && supply > 0n) {
+        const portfolioValue = (shares * assets) / supply
+        setUserPortfolioValue(portfolioValue)
+        setUserPortfolioValueFormatted(formatUnits(portfolioValue, assetDec))
+        console.log('💰 Updated portfolio value:', formatUnits(portfolioValue, assetDec))
+      } else {
+        setUserPortfolioValue(0n)
+        setUserPortfolioValueFormatted('0')
+      }
+    } catch (err) {
+      console.error('❌ Erreur refresh user data:', err)
+    }
+  }, [address, assetDecimals])
 
   // Rafraîchit à la connexion
   useEffect(() => {
@@ -159,9 +235,16 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
   // Écouter les événements de refresh
   useEffect(() => {
     const handler = () => fetchVaultData()
+    const userDataHandler = () => refreshUserData()
+    
     window.addEventListener('vault-refresh', handler)
-    return () => window.removeEventListener('vault-refresh', handler)
-  }, [fetchVaultData])
+    window.addEventListener('user-data-refresh', userDataHandler)
+    
+    return () => {
+      window.removeEventListener('vault-refresh', handler)
+      window.removeEventListener('user-data-refresh', userDataHandler)
+    }
+  }, [fetchVaultData, refreshUserData])
 
   // previewDeposit
   const previewDeposit = useCallback(async (amount: bigint) => {
@@ -204,9 +287,9 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
         args: [amount, address],
       })
       await waitForTransactionReceipt(wagmiConfig, { hash })
-      await fetchVaultData()
+      await refreshUserData()
     },
-    [address, fetchVaultData, chainId]
+    [address, refreshUserData, chainId]
   )
 
   // redeem
@@ -220,9 +303,9 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
         args: [shares, receiver, owner],
       })
       await waitForTransactionReceipt(wagmiConfig, { hash })
-      await fetchVaultData()
+      await refreshUserData()
     },
-    [address, fetchVaultData, chainId]
+    [address, refreshUserData, chainId]
   )
 
   const value: VaultContextType = {
@@ -232,11 +315,13 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
     decimals,
     assetDecimals,
     userPortfolioValue,
+    userPortfolioValueFormatted,
     previewDeposit,
     previewRedeem,
     deposit,
     redeem,
     fetchVaultData,
+    refreshUserData,
   }
 
   return <VaultContext.Provider value={value}>{children}</VaultContext.Provider>

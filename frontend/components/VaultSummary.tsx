@@ -17,30 +17,47 @@ import { mockTokenAddresses } from '@/constants'
 import mockUSDCAbiJson from '@/abis/MockUSDC.abi.json'
 import { formatUnits } from 'viem'
 import type { Abi } from 'viem'
-import { Wallet, TrendingUp, Target, DollarSign } from 'lucide-react'
-import { formatUSDC } from '@/utils/formatting'
+import { Wallet, TrendingUp, Target, DollarSign, RefreshCw } from 'lucide-react'
+import { formatUSDC, formatPercentage } from '@/utils/formatting'
 
 interface VaultSummaryProps {
   className?: string
 }
 
+// Helper pour formater les nombres en USDC
+const formatNumberAsUSDC = (value: number): string => {
+  return value
+    .toLocaleString('fr-FR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      style: 'currency',
+      currency: 'USD',
+      currencyDisplay: 'code',
+    })
+    .replace('USD', 'USDC')
+}
+
 const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
   const { address } = useAccount()
   const { history } = useUserHistory(address, 18)
-  const { userPortfolioValue } = useVault()
-
-  // Convertir userPortfolioValue en number (18 décimales)
-  const rwaValueNumber = userPortfolioValue
-    ? parseFloat(formatUnits(userPortfolioValue, 18))
-    : 0
+  const { 
+    userPortfolioValue, 
+    userPortfolioValueFormatted, 
+    userShares,
+    totalAssets,
+    totalSupply,
+    assetDecimals,
+    refreshUserData 
+  } = useVault()
 
   const [userBalance, setUserBalance] = useState<bigint | null>(null)
   const [localTotalInvested, setLocalTotalInvested] = useState<number>(0)
   const [pendingDeposits, setPendingDeposits] = useState<number>(0)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   const usdcAbi = (mockUSDCAbiJson.abi ?? mockUSDCAbiJson) as Abi
 
-  // ✅ Récupère le solde mUSDC de l'utilisateur
+  // ✅ Récupère le solde USDC de l'utilisateur
   useEffect(() => {
     const fetchBalance = async () => {
       if (!address) return setUserBalance(null)
@@ -53,7 +70,9 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
           args: [address],
         })
         setUserBalance(balance as bigint)
-      } catch {
+        console.log('💰 VaultSummary - User balance:', formatUSDC(balance as bigint))
+      } catch (error) {
+        console.error('❌ VaultSummary - Error fetching balance:', error)
         setUserBalance(null)
       }
     }
@@ -61,7 +80,11 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
     fetchBalance()
     const handler = () => fetchBalance()
     window.addEventListener('vault-refresh', handler)
-    return () => window.removeEventListener('vault-refresh', handler)
+    window.addEventListener('user-data-refresh', handler)
+    return () => {
+      window.removeEventListener('vault-refresh', handler)
+      window.removeEventListener('user-data-refresh', handler)
+    }
   }, [address, usdcAbi])
 
   // ✅ Gestion du total investi local pour refresh immédiat
@@ -72,6 +95,7 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
 
     // Total = historique blockchain + dépôts en attente
     setLocalTotalInvested(totalFromHistory + pendingDeposits)
+    console.log('📊 VaultSummary - Total invested:', totalFromHistory + pendingDeposits)
   }, [history, pendingDeposits])
 
   // ✅ Écouter les dépôts en cours
@@ -80,17 +104,20 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
       const amount = event.detail?.amount
       if (amount) {
         setPendingDeposits((prev) => prev + amount)
+        console.log('📈 VaultSummary - Deposit started:', amount)
       }
     }
 
     const handleDepositSuccess = () => {
       // Réinitialiser les dépôts en attente après succès
       setPendingDeposits(0)
+      console.log('✅ VaultSummary - Deposit success')
     }
 
     const handleDepositError = () => {
       // Réinitialiser les dépôts en attente après erreur
       setPendingDeposits(0)
+      console.log('❌ VaultSummary - Deposit error')
     }
 
     window.addEventListener(
@@ -110,28 +137,31 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
     }
   }, [])
 
-  const formatCurrency = (value: string | number) => {
-    const numValue = typeof value === 'string' ? parseFloat(value) : value
-    return numValue
-      .toLocaleString('fr-FR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-        style: 'currency',
-        currency: 'USD',
-        currencyDisplay: 'code',
-      })
-      .replace('USD', 'USDC')
+  // Fonction de refresh manuel
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    try {
+      await refreshUserData()
+      console.log('🔄 VaultSummary - Manual refresh completed')
+    } catch (error) {
+      console.error('❌ VaultSummary - Manual refresh error:', error)
+    } finally {
+      setIsRefreshing(false)
+    }
   }
 
   // Calculer la performance
   const calculatePerformance = () => {
-    if (!rwaValueNumber || localTotalInvested === 0)
+    const currentValue = userPortfolioValueFormatted 
+      ? parseFloat(userPortfolioValueFormatted) 
+      : 0
+    
+    if (!currentValue || localTotalInvested === 0) {
       return { value: 0, percentage: 0, isPositive: false }
+    }
 
-    const currentValue = rwaValueNumber
     const performance = currentValue - localTotalInvested
-    const percentage =
-      localTotalInvested > 0 ? (performance / localTotalInvested) * 100 : 0
+    const percentage = localTotalInvested > 0 ? (performance / localTotalInvested) * 100 : 0
 
     return {
       value: performance,
@@ -142,6 +172,17 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
 
   const performance = calculatePerformance()
 
+  // Debug info
+  console.log('📊 VaultSummary - Debug:', {
+    userPortfolioValue: userPortfolioValue ? formatUnits(userPortfolioValue, assetDecimals || 18) : 'null',
+    userPortfolioValueFormatted,
+    userShares: userShares ? formatUnits(userShares, 18) : 'null',
+    totalAssets: totalAssets ? formatUnits(totalAssets, assetDecimals || 18) : 'null',
+    totalSupply: totalSupply ? formatUnits(totalSupply, 18) : 'null',
+    localTotalInvested,
+    performance: performance.value
+  })
+
   return (
     <Card className={className}>
       <CardHeader>
@@ -149,10 +190,18 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
           <Target className="w-5 h-5" />
           Résumé de votre investissement
           <Badge variant="secondary">Test</Badge>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="ml-auto p-1 hover:bg-gray-100 rounded"
+            title="Rafraîchir les données"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </button>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Solde mUSDC */}
+        {/* Solde USDC */}
         <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
           <div className="flex items-center gap-3">
             <Wallet className="w-5 h-5 text-blue-600" />
@@ -176,7 +225,7 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
               <p className="text-lg font-bold text-green-900">
                 {localTotalInvested === 0
                   ? '...'
-                  : formatCurrency(localTotalInvested)}
+                  : formatNumberAsUSDC(localTotalInvested)}
               </p>
             </div>
           </div>
@@ -191,7 +240,9 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
                 Valeur actuelle du portefeuille
               </p>
               <p className="text-lg font-bold text-purple-900">
-                {rwaValueNumber === 0 ? '...' : formatCurrency(rwaValueNumber)}
+                {userPortfolioValueFormatted 
+                  ? formatNumberAsUSDC(parseFloat(userPortfolioValueFormatted))
+                  : '...'}
               </p>
             </div>
           </div>
@@ -212,16 +263,27 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
                   className={`text-lg font-bold ${performance.isPositive ? 'text-green-900' : 'text-red-900'}`}
                 >
                   {performance.isPositive ? '+' : ''}
-                  {formatCurrency(performance.value)}
+                  {formatNumberAsUSDC(performance.value)}
                 </p>
                 <p
                   className={`text-sm ${performance.isPositive ? 'text-green-700' : 'text-red-700'}`}
                 >
                   {performance.isPositive ? '+' : ''}
-                  {performance.percentage.toFixed(2)}%
+                  {formatPercentage(performance.percentage / 100)}
                 </p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Debug info (à retirer en prod) */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="p-4 bg-gray-50 rounded-lg text-xs">
+            <p className="font-medium mb-2">Debug Info:</p>
+            <p>Shares: {userShares ? formatUnits(userShares, 18) : 'null'}</p>
+            <p>Total Assets: {totalAssets ? formatUnits(totalAssets, assetDecimals || 18) : 'null'}</p>
+            <p>Total Supply: {totalSupply ? formatUnits(totalSupply, 18) : 'null'}</p>
+            <p>Portfolio Value: {userPortfolioValueFormatted || 'null'}</p>
           </div>
         )}
       </CardContent>
