@@ -52,7 +52,11 @@ const SimpleDepositForm: React.FC = () => {
 
   useEffect(() => {
     if (isTxSuccess) {
-      toast.success('✅ Dépôt effectué avec succès !')
+      toast.success('✅ Investissement effectué avec succès !', {
+        description:
+          'Vos fonds ont été répartis selon votre stratégie. Vous pouvez consulter votre portefeuille pour voir la répartition.',
+        duration: 5000,
+      })
       setAmount('')
       setTxHash(undefined)
       window.dispatchEvent(new Event('vault-refresh'))

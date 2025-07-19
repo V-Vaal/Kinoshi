@@ -1,8 +1,8 @@
 'use client'
 
 import { useAccount } from 'wagmi'
-import { useUserInvestmentStats } from '@/utils/useUserInvestmentStats'
 import { useVault } from '@/context/VaultContext'
+import { useUserHistory } from '@/utils/useUserHistory'
 import {
   Card,
   CardContent,
@@ -13,11 +13,12 @@ import {
 import { useEffect, useState } from 'react'
 import { readContract } from 'wagmi/actions'
 import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
-import { mockTokenAddresses } from '@/constants'
+import { mockTokenAddresses, vaultAddress } from '@/constants'
 import mockUSDCAbiJson from '@/abis/MockUSDC.abi.json'
+import vaultAbiJson from '@/abis/Vault.abi.json'
 import { formatUnits } from 'viem'
 import type { Abi } from 'viem'
-import { Wallet, TrendingUp, Coins, Target } from 'lucide-react'
+import { Wallet, TrendingUp, Target, DollarSign } from 'lucide-react'
 
 interface VaultSummaryProps {
   className?: string
@@ -25,31 +26,23 @@ interface VaultSummaryProps {
 
 const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
   const { address } = useAccount()
-  const { userShares, assetDecimals, totalAssets, totalSupply } = useVault()
-  const { totalDeposited, loading } = useUserInvestmentStats(
-    address,
-    assetDecimals ?? 6
-  )
+  const { userShares, assetDecimals } = useVault()
+  const { history } = useUserHistory(address, 6)
 
-  // Solde mUSDC utilisateur
   const [userBalance, setUserBalance] = useState<bigint | null>(null)
-
-  // Valeur actuelle du portefeuille (estimation basée sur les parts)
   const [portfolioValue, setPortfolioValue] = useState<string>('0')
 
-  // Valeur du jeton unique
-  const [tokenValue, setTokenValue] = useState<string>('0')
+  const vaultAbi = (vaultAbiJson.abi ?? vaultAbiJson) as Abi
+  const usdcAbi = (mockUSDCAbiJson.abi ?? mockUSDCAbiJson) as Abi
 
+  // ✅ Récupère le solde mUSDC de l'utilisateur
   useEffect(() => {
     const fetchBalance = async () => {
-      if (!address) {
-        setUserBalance(null)
-        return
-      }
+      if (!address) return setUserBalance(null)
+
       try {
-        const abi = (mockUSDCAbiJson.abi ?? mockUSDCAbiJson) as Abi
         const balance = await readContract(wagmiConfig, {
-          abi,
+          abi: usdcAbi,
           address: mockTokenAddresses.mUSDC as `0x${string}`,
           functionName: 'balanceOf',
           args: [address],
@@ -59,51 +52,78 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
         setUserBalance(null)
       }
     }
-    fetchBalance()
 
+    fetchBalance()
     const handler = () => fetchBalance()
     window.addEventListener('vault-refresh', handler)
     return () => window.removeEventListener('vault-refresh', handler)
-  }, [address])
+  }, [address, usdcAbi])
 
-  // Calcul de la valeur du portefeuille et du jeton unique
+  // ✅ Calcule la valeur du portefeuille via convertToAssets
   useEffect(() => {
-    if (userShares && totalAssets && totalSupply && assetDecimals) {
-      try {
-        // Valeur du portefeuille = parts * (totalAssets / totalSupply)
-        const portfolioValueBigInt = (userShares * totalAssets) / totalSupply
-        const portfolioValueFormatted = formatUnits(
-          portfolioValueBigInt,
-          assetDecimals
-        )
-        console.log('DEBUG:', {
-          userShares: userShares.toString(),
-          totalSupply: totalSupply.toString(),
-          totalAssets: totalAssets.toString(),
-        })
-        console.log('RATIO :', Number(totalAssets) / Number(totalSupply))
-
-        setPortfolioValue(portfolioValueFormatted)
-
-        // Valeur du jeton unique = totalAssets / totalSupply
-        const tokenValueBigInt = totalAssets / totalSupply
-        const tokenValueFormatted = formatUnits(tokenValueBigInt, assetDecimals)
-        setTokenValue(tokenValueFormatted)
-      } catch (error) {
-        console.error('Erreur calcul valeur:', error)
+    const fetchPortfolioValue = async () => {
+      if (!userShares || !assetDecimals || userShares === 0n) {
         setPortfolioValue('0')
-        setTokenValue('0')
+        return
+      }
+
+      try {
+        const result = await readContract(wagmiConfig, {
+          abi: vaultAbi,
+          address: vaultAddress as `0x${string}`,
+          functionName: 'convertToAssets',
+          args: [userShares],
+        })
+
+        const formatted = formatUnits(result as bigint, assetDecimals)
+        setPortfolioValue(formatted)
+      } catch {
+        setPortfolioValue('0')
       }
     }
-  }, [userShares, totalAssets, totalSupply, assetDecimals])
+
+    fetchPortfolioValue()
+    const handler = () => fetchPortfolioValue()
+    window.addEventListener('vault-refresh', handler)
+    return () => window.removeEventListener('vault-refresh', handler)
+  }, [userShares, assetDecimals, vaultAbi])
 
   const formatCurrency = (value: string | number) => {
     const numValue = typeof value === 'string' ? parseFloat(value) : value
-    return numValue.toLocaleString('fr-FR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })
+    return numValue
+      .toLocaleString('fr-FR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+        style: 'currency',
+        currency: 'USD',
+        currencyDisplay: 'code',
+      })
+      .replace('USD', 'USDC')
   }
+
+  // Calculer le total investi à partir de l'historique
+  const totalInvested = history
+    .filter((item) => item.type === 'Dépôt')
+    .reduce((sum, item) => sum + item.amount, 0)
+
+  // Calculer la performance
+  const calculatePerformance = () => {
+    if (!portfolioValue || totalInvested === 0)
+      return { value: 0, percentage: 0, isPositive: false }
+
+    const currentValue = parseFloat(portfolioValue)
+    const performance = currentValue - totalInvested
+    const percentage =
+      totalInvested > 0 ? (performance / totalInvested) * 100 : 0
+
+    return {
+      value: performance,
+      percentage,
+      isPositive: performance >= 0,
+    }
+  }
+
+  const performance = calculatePerformance()
 
   return (
     <Card className={className}>
@@ -126,24 +146,20 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
               <p className="text-lg font-bold text-blue-900">
                 {userBalance === null
                   ? '...'
-                  : `${formatCurrency(formatUnits(userBalance, 6))} USDC`}
+                  : formatCurrency(formatUnits(userBalance, 6))}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Montant total investi */}
+        {/* Total investi */}
         <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
           <div className="flex items-center gap-3">
-            <Coins className="w-5 h-5 text-green-600" />
+            <DollarSign className="w-5 h-5 text-green-600" />
             <div>
-              <p className="text-sm font-medium text-gray-600">
-                Montant total investi
-              </p>
+              <p className="text-sm font-medium text-gray-600">Total investi</p>
               <p className="text-lg font-bold text-green-900">
-                {loading
-                  ? '...'
-                  : `${formatCurrency(totalDeposited / 1e6)} USDC`}
+                {totalInvested === 0 ? '...' : formatCurrency(totalInvested)}
               </p>
             </div>
           </div>
@@ -160,25 +176,39 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
               <p className="text-lg font-bold text-purple-900">
                 {portfolioValue === '0'
                   ? '...'
-                  : `${formatCurrency(portfolioValue)} USDC`}
+                  : formatCurrency(portfolioValue)}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Valeur du jeton unique */}
-        <div className="p-4 bg-amber-50 rounded-lg border-2 border-amber-200">
-          <div className="text-center">
-            <p className="text-sm font-medium text-gray-600 mb-1">
-              Votre jeton unique vaut actuellement
-            </p>
-            <p className="text-2xl font-bold text-amber-900">
-              {tokenValue === '0'
-                ? '...'
-                : `${formatCurrency(tokenValue)} USDC`}
-            </p>
+        {/* Performance */}
+        {totalInvested > 0 && (
+          <div className="flex items-center justify-between p-4 bg-orange-50 rounded-lg">
+            <div className="flex items-center gap-3">
+              {performance.isPositive ? (
+                <TrendingUp className="w-5 h-5 text-green-600" />
+              ) : (
+                <TrendingUp className="w-5 h-5 text-red-600 rotate-180" />
+              )}
+              <div>
+                <p className="text-sm font-medium text-gray-600">Performance</p>
+                <p
+                  className={`text-lg font-bold ${performance.isPositive ? 'text-green-900' : 'text-red-900'}`}
+                >
+                  {performance.isPositive ? '+' : ''}
+                  {formatCurrency(performance.value)}
+                </p>
+                <p
+                  className={`text-sm ${performance.isPositive ? 'text-green-700' : 'text-red-700'}`}
+                >
+                  {performance.isPositive ? '+' : ''}
+                  {performance.percentage.toFixed(2)}%
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   )

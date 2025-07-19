@@ -55,7 +55,11 @@ const SimpleRedeemForm: React.FC = () => {
 
   useEffect(() => {
     if (isTxSuccess) {
-      toast.success('✅ Retrait effectué avec succès !')
+      toast.success('✅ Retrait effectué avec succès !', {
+        description:
+          'Vos fonds ont été convertis en USDC et transférés vers votre wallet.',
+        duration: 5000,
+      })
       setAmount('')
       setTxHash(undefined)
       window.dispatchEvent(new Event('vault-refresh'))

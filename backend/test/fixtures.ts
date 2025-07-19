@@ -22,14 +22,33 @@ export async function deployVaultFixture() {
   // Enregistrement du MockUSDC dans le TokenRegistry
   await tokenRegistry.registerToken(await mockUSDC.getAddress(), "mUSDC", 6);
 
+  // Déploiement de RWA tokens mock
+  const MockRWA1 = await ethers.getContractFactory("MockUSDC");
+  const mockRWA1 = await MockRWA1.deploy("Mock RWA 1", "mRWA1", 6);
+  await mockRWA1.waitForDeployment();
+
+  const MockRWA2 = await ethers.getContractFactory("MockUSDC");
+  const mockRWA2 = await MockRWA2.deploy("Mock RWA 2", "mRWA2", 6);
+  await mockRWA2.waitForDeployment();
+
+  // Enregistrement des RWA tokens
+  await tokenRegistry.registerToken(await mockRWA1.getAddress(), "mRWA1", 6);
+  await tokenRegistry.registerToken(await mockRWA2.getAddress(), "mRWA2", 6);
+
   // Déploiement du MockPriceFeed
   const MockPriceFeed = await ethers.getContractFactory("MockPriceFeed");
   const mockPriceFeed = await MockPriceFeed.deploy(owner.address);
   await mockPriceFeed.waitForDeployment();
 
-  // Configuration des prix par défaut
-  const usdcPrice = parseUnits("1", 6); // 1 USDC = 1 USDC
-  await mockPriceFeed.setPrice(await mockUSDC.getAddress(), usdcPrice, 6);
+  // Configuration des prix par défaut (en 18 décimales)
+  const usdcPrice = parseUnits("1", 18); // 1 USDC = 1 USDC
+  await mockPriceFeed.setPrice(await mockUSDC.getAddress(), usdcPrice, 18);
+
+  // Configuration des prix des RWA tokens (en 18 décimales)
+  const rwa1Price = parseUnits("1.2", 18); // 1 RWA1 = 1.2 USDC
+  const rwa2Price = parseUnits("0.8", 18); // 1 RWA2 = 0.8 USDC
+  await mockPriceFeed.setPrice(await mockRWA1.getAddress(), rwa1Price, 18);
+  await mockPriceFeed.setPrice(await mockRWA2.getAddress(), rwa2Price, 18);
 
   // Déploiement du Vault avec TokenRegistry et Oracle
   const Vault = await ethers.getContractFactory("Vault");
@@ -42,11 +61,11 @@ export async function deployVaultFixture() {
   );
   await vault.waitForDeployment();
 
-  // Définition d'une allocation 100% USDC
+  // Définition d'une allocation 100% RWA1 (plus simple pour les tests)
   const allocations = [
     {
-      token: await mockUSDC.getAddress(),
-      weight: parseUnits("1", 18), // 100% sur USDC
+      token: await mockRWA1.getAddress(),
+      weight: parseUnits("1", 18), // 100% sur RWA1
       active: true,
     },
   ];
@@ -57,6 +76,8 @@ export async function deployVaultFixture() {
   return {
     vault,
     mockUSDC,
+    mockRWA1,
+    mockRWA2,
     tokenRegistry,
     mockPriceFeed,
     owner,
@@ -90,9 +111,9 @@ export async function deployVaultFixtureEmpty() {
   const mockPriceFeed = await MockPriceFeed.deploy(owner.address);
   await mockPriceFeed.waitForDeployment();
 
-  // Configuration des prix par défaut
-  const usdcPrice = parseUnits("1", 6); // 1 USDC = 1 USDC
-  await mockPriceFeed.setPrice(await mockUSDC.getAddress(), usdcPrice, 6);
+  // Configuration des prix par défaut (en 18 décimales)
+  const usdcPrice = parseUnits("1", 18); // 1 USDC = 1 USDC
+  await mockPriceFeed.setPrice(await mockUSDC.getAddress(), usdcPrice, 18);
 
   // Déploiement du Vault SANS ALLOCATION
   const Vault = await ethers.getContractFactory("Vault");

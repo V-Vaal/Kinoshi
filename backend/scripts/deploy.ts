@@ -71,18 +71,18 @@ async function main() {
   // 5. Configuration des prix réalistes
   console.log("\n💰 Configuration des prix réalistes...");
 
-  // Prix en USDC (6 décimales)
-  const btcPrice = parseUnits("118800", 6); // 118,800 USD
-  const equityPrice = parseUnits("623.62", 6); // 623.62 USD
-  const goldPrice = parseUnits("3355", 6); // 3,355 USD
-  const bondPrice = parseUnits("95.78", 6); // 95.78 USD
-  const usdcPrice = parseUnits("1", 6); // 1 USDC = 1 USDC
+  // Prix en USDC (normalisés en base 18)
+  const btcPrice = parseUnits("118800", 18); // 118,800 USD
+  const equityPrice = parseUnits("623.62", 18); // 623.62 USD
+  const goldPrice = parseUnits("3355", 18); // 3,355 USD
+  const bondPrice = parseUnits("95.78", 18); // 95.78 USD
+  const usdcPrice = parseUnits("1", 18); // 1 USDC = 1 USDC
 
-  await mockPriceFeed.setPrice(await mockBTC.getAddress(), btcPrice, 6);
-  await mockPriceFeed.setPrice(await mockEquity.getAddress(), equityPrice, 6);
-  await mockPriceFeed.setPrice(await mockGold.getAddress(), goldPrice, 6);
-  await mockPriceFeed.setPrice(await mockBonds.getAddress(), bondPrice, 6);
-  await mockPriceFeed.setPrice(await mockUSDC.getAddress(), usdcPrice, 6);
+  await mockPriceFeed.setPrice(await mockBTC.getAddress(), btcPrice, 18);
+  await mockPriceFeed.setPrice(await mockEquity.getAddress(), equityPrice, 18);
+  await mockPriceFeed.setPrice(await mockGold.getAddress(), goldPrice, 18);
+  await mockPriceFeed.setPrice(await mockBonds.getAddress(), bondPrice, 18);
+  await mockPriceFeed.setPrice(await mockUSDC.getAddress(), usdcPrice, 18);
 
   console.log("✅ Prix configurés:");
   console.log("  - BTC: $118,800");

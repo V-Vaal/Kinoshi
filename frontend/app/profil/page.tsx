@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useAccount } from 'wagmi'
 import RiskProfileForm from '@/components/RiskProfileForm'
 import {
   KinoshiCard,
@@ -34,35 +35,35 @@ const getProfileMessage = (profile: string): string => {
 }
 
 const ProfilePage: React.FC = () => {
+  const { address } = useAccount()
   const [riskProfile, setRiskProfile] = useState<RiskProfile | null>(null)
   const [showForm, setShowForm] = useState(false)
   const { loadingRole } = useUser()
 
   useEffect(() => {
-    let savedProfile: string | null = null
-    if (typeof window !== 'undefined') {
-      savedProfile = localStorage.getItem('kinoshi-risk-profile')
-    }
-    if (savedProfile) {
-      try {
-        const profile = JSON.parse(savedProfile) as RiskProfile
+    if (!address) return
+
+    try {
+      const saved = localStorage.getItem(
+        `kinoshi-risk-profile-${address.toLowerCase()}`
+      )
+      if (saved) {
+        const profile = JSON.parse(saved) as RiskProfile
         setRiskProfile(profile)
         setShowForm(false)
-      } catch {
-        // En cas d'erreur, on supprime le localStorage corrompu
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('kinoshi-risk-profile')
-        }
+      } else {
         setShowForm(true)
       }
-    } else {
+    } catch {
+      // En cas d'erreur, nettoyer et afficher le formulaire
+      localStorage.removeItem(`kinoshi-risk-profile-${address.toLowerCase()}`)
       setShowForm(true)
     }
-  }, [])
+  }, [address])
 
   const handleModifyProfile = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('kinoshi-risk-profile')
+    if (address) {
+      localStorage.removeItem(`kinoshi-risk-profile-${address.toLowerCase()}`)
     }
     setRiskProfile(null)
     setShowForm(true)
@@ -76,7 +77,28 @@ const ProfilePage: React.FC = () => {
   if (showForm) {
     return (
       <AuthGuard requireProfile={false}>
-        <RiskProfileForm />
+        <div className="container mx-auto px-4 py-8">
+          <KinoshiCard variant="outlined" className="max-w-2xl mx-auto">
+            <KinoshiCardHeader>
+              <KinoshiCardTitle>
+                Complétez votre profil de risque
+              </KinoshiCardTitle>
+            </KinoshiCardHeader>
+            <KinoshiCardContent className="space-y-6">
+              {/* Texte explicatif ajouté */}
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-blue-800 font-medium leading-relaxed">
+                  Merci de remplir ce formulaire. Il nous permet de définir une
+                  stratégie d'investissement correspondant à votre profil de
+                  risque. Une fois complété, vous pourrez accéder à votre
+                  portefeuille et investir.
+                </p>
+              </div>
+
+              <RiskProfileForm />
+            </KinoshiCardContent>
+          </KinoshiCard>
+        </div>
       </AuthGuard>
     )
   }

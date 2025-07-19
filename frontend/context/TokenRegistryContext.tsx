@@ -54,7 +54,7 @@ export const TokenRegistryProvider = ({
 }: {
   children: ReactNode
 }) => {
-  const { isConnected } = useAccount()
+  const { address, isConnected } = useAccount()
   const [registeredTokens, setRegisteredTokens] = useState<TokenInfo[]>([])
   const [allocations, setAllocations] = useState<AssetAllocation[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -127,12 +127,16 @@ export const TokenRegistryProvider = ({
     }
   }, [])
 
-  // Rafraîchit à la connexion
+  // Rafraîchit à la connexion et changement d'adresse
   useEffect(() => {
-    if (isConnected) {
+    if (isConnected && address) {
       fetchTokenData()
+    } else {
+      // Reset des données quand l'utilisateur se déconnecte
+      setRegisteredTokens([])
+      setAllocations([])
     }
-  }, [isConnected, fetchTokenData])
+  }, [isConnected, address, fetchTokenData])
 
   const value: TokenRegistryContextType = {
     registeredTokens,

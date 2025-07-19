@@ -9,7 +9,6 @@ import type { Abi } from 'viem'
 interface VaultRoles {
   isAdmin: boolean
   isDefaultAdmin: boolean
-  isWhitelisted: boolean
   loading: boolean
   error: string | null
   refetch: () => void
@@ -20,7 +19,6 @@ export function useVaultRoles(): VaultRoles {
   const [data, setData] = useState<VaultRoles>({
     isAdmin: false,
     isDefaultAdmin: false,
-    isWhitelisted: false,
     loading: false,
     error: null,
     refetch: () => {},
@@ -32,7 +30,6 @@ export function useVaultRoles(): VaultRoles {
         ...prev,
         isAdmin: false,
         isDefaultAdmin: false,
-        isWhitelisted: false,
         loading: false,
         error: null,
       }))
@@ -59,32 +56,24 @@ export function useVaultRoles(): VaultRoles {
       ])
 
       // Vérifier les permissions
-      const [hasAdminRole, hasDefaultAdminRole, isWhitelisted] =
-        await Promise.all([
-          readContract(wagmiConfig, {
-            abi,
-            address: vaultAddress as `0x${string}`,
-            functionName: 'hasRole',
-            args: [adminRole, address],
-          }),
-          readContract(wagmiConfig, {
-            abi,
-            address: vaultAddress as `0x${string}`,
-            functionName: 'hasRole',
-            args: [defaultAdminRole, address],
-          }),
-          readContract(wagmiConfig, {
-            abi,
-            address: vaultAddress as `0x${string}`,
-            functionName: 'isWhitelisted',
-            args: [address],
-          }),
-        ])
+      const [hasAdminRole, hasDefaultAdminRole] = await Promise.all([
+        readContract(wagmiConfig, {
+          abi,
+          address: vaultAddress as `0x${string}`,
+          functionName: 'hasRole',
+          args: [adminRole, address],
+        }),
+        readContract(wagmiConfig, {
+          abi,
+          address: vaultAddress as `0x${string}`,
+          functionName: 'hasRole',
+          args: [defaultAdminRole, address],
+        }),
+      ])
 
       setData({
         isAdmin: Boolean(hasAdminRole),
         isDefaultAdmin: Boolean(hasDefaultAdminRole),
-        isWhitelisted: Boolean(isWhitelisted),
         loading: false,
         error: null,
         refetch: fetchRoles,
@@ -95,7 +84,6 @@ export function useVaultRoles(): VaultRoles {
         ...prev,
         isAdmin: false,
         isDefaultAdmin: false,
-        isWhitelisted: false,
         loading: false,
         error: 'Impossible de récupérer les rôles',
       }))

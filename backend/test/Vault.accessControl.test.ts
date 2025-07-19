@@ -170,29 +170,41 @@ describe("Vault – AccessControl", function () {
       await vault.connect(owner).scheduleManagementFee();
     });
 
-    it("seul un ADMIN_ROLE peut retirer de la trésorerie", async function () {
+    it("seul un ADMIN_ROLE peut accrue des frais de gestion manuellement", async function () {
       const { vault, owner, user1 } = await loadFixture(deployVaultFixture);
 
+      await vault.connect(owner).setFeeReceiver(user1.address);
+      await vault.connect(owner).setFees(50, 100);
+
+      const feeShares = ethers.parseUnits("1000", 18);
+
       await expect(
-        vault.connect(user1).withdrawTreasury(user1.address, 1000)
+        vault.connect(user1).accrueManagementFee(feeShares)
       ).to.be.revertedWithCustomError(
         vault,
         "AccessControlUnauthorizedAccount"
       );
+
+      await vault.connect(owner).accrueManagementFee(feeShares);
     });
 
-    it("seul un ADMIN_ROLE peut gérer la whitelist", async function () {
+    it("seul un ADMIN_ROLE peut accéder aux fonctions de gestion", async function () {
       const { vault, owner, user1 } = await loadFixture(deployVaultFixture);
 
+      // Test que user1 ne peut pas accéder aux fonctions admin
       await expect(
-        vault.connect(user1).setWhitelisted(user1.address, true)
+        vault.connect(user1).setAllocations([])
       ).to.be.revertedWithCustomError(
         vault,
         "AccessControlUnauthorizedAccount"
       );
 
-      await vault.connect(owner).setWhitelisted(user1.address, true);
-      expect(await vault.isWhitelisted(user1.address)).to.be.true;
+      await expect(
+        vault.connect(user1).setFees(100, 50)
+      ).to.be.revertedWithCustomError(
+        vault,
+        "AccessControlUnauthorizedAccount"
+      );
     });
   });
 

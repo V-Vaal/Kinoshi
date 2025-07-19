@@ -9,17 +9,19 @@ import { useRouter } from 'next/navigation'
 
 export default function Home() {
   const { isAdmin, loadingRole } = useUser()
-  const { isConnected } = useAccount()
+  const { isConnected, address } = useAccount()
   const router = useRouter()
 
   const hasProfile =
     typeof window !== 'undefined' &&
-    localStorage.getItem('kinoshi-risk-profile') !== null
+    address &&
+    localStorage.getItem(`kinoshi-risk-profile-${address.toLowerCase()}`) !==
+      null
 
   useEffect(() => {
     if (loadingRole) return
 
-    if (isConnected) {
+    if (isConnected && address) {
       if (isAdmin) {
         router.replace('/admin')
       } else if (hasProfile) {
@@ -28,7 +30,7 @@ export default function Home() {
         router.replace('/profil')
       }
     }
-  }, [isConnected, isAdmin, hasProfile, loadingRole, router])
+  }, [isConnected, isAdmin, hasProfile, loadingRole, router, address])
 
   // Affichage landing stylée si non connecté
   if (!isConnected) {

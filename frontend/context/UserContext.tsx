@@ -35,12 +35,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [montantInvesti, setMontantInvesti] = useState<number>(0)
 
   // Utiliser le hook useVaultRoles pour récupérer les rôles
-  const { isAdmin, isWhitelisted, loading: loadingRole } = useVaultRoles()
+  const { isAdmin, loading: loadingRole } = useVaultRoles()
 
-  // Un utilisateur connecté est considéré comme "user" même s'il n'est pas whitelisté
-  // isWhitelisted est conservé comme information technique uniquement
+  // Un utilisateur connecté est considéré comme "user" (pas de whitelist)
   const isVisitor = !isConnected
-  const isUser = isWhitelisted // Utiliser isWhitelisted du hook
+  const isUser = isConnected // Tout utilisateur connecté est un "user"
   const isAuthorized = () => isConnected
 
   return (

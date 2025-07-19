@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useAccount } from 'wagmi'
 import {
   KinoshiCard,
   KinoshiCardHeader,
@@ -149,6 +150,7 @@ const getProfileMessage = (profile: string): string => {
 }
 
 const RiskProfileForm: React.FC = () => {
+  const { address } = useAccount()
   const [currentStep, setCurrentStep] = useState(0)
   const [answers, setAnswers] = useState<number[]>(
     new Array(questions.length).fill(-1)
@@ -158,23 +160,22 @@ const RiskProfileForm: React.FC = () => {
 
   // Charger le profil depuis localStorage au montage
   useEffect(() => {
-    let savedProfile: string | null = null
-    if (typeof window !== 'undefined') {
-      savedProfile = localStorage.getItem('kinoshi-risk-profile')
-    }
-    if (savedProfile) {
-      try {
-        const profile = JSON.parse(savedProfile) as RiskProfile
+    if (!address) return
+
+    try {
+      const saved = localStorage.getItem(
+        `kinoshi-risk-profile-${address.toLowerCase()}`
+      )
+      if (saved) {
+        const profile = JSON.parse(saved) as RiskProfile
         setRiskProfile(profile)
         setIsCompleted(true)
-      } catch {
-        // En cas d'erreur, on supprime le localStorage corrompu
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('kinoshi-risk-profile')
-        }
       }
+    } catch {
+      // En cas d'erreur, nettoyer
+      localStorage.removeItem(`kinoshi-risk-profile-${address.toLowerCase()}`)
     }
-  }, [])
+  }, [address])
 
   const handleAnswer = (questionIndex: number, points: number) => {
     const newAnswers = [...answers]
@@ -200,9 +201,9 @@ const RiskProfileForm: React.FC = () => {
       }
 
       setRiskProfile(riskProfileData)
-      if (typeof window !== 'undefined') {
+      if (address) {
         localStorage.setItem(
-          'kinoshi-risk-profile',
+          `kinoshi-risk-profile-${address.toLowerCase()}`,
           JSON.stringify(riskProfileData)
         )
       }
@@ -221,8 +222,8 @@ const RiskProfileForm: React.FC = () => {
     setAnswers(new Array(questions.length).fill(-1))
     setRiskProfile(null)
     setIsCompleted(false)
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('kinoshi-risk-profile')
+    if (address) {
+      localStorage.removeItem(`kinoshi-risk-profile-${address.toLowerCase()}`)
     }
   }
 
