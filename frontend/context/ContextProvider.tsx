@@ -6,13 +6,16 @@ import { UIProvider } from './UIContext'
 import { UserProvider } from './UserContext'
 import { VaultProvider } from './VaultContext'
 import { TokenRegistryProvider } from './TokenRegistryContext'
+import { RWAProvider } from './RWAContext'
 
 export const ContextProvider = ({ children }: { children: ReactNode }) => (
   <LangProvider>
     <UIProvider>
       <UserProvider>
         <VaultProvider>
-          <TokenRegistryProvider>{children}</TokenRegistryProvider>
+          <TokenRegistryProvider>
+            <RWAProvider>{children}</RWAProvider>
+          </TokenRegistryProvider>
         </VaultProvider>
       </UserProvider>
     </UIProvider>

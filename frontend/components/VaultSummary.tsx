@@ -1,8 +1,8 @@
 'use client'
 
 import { useAccount } from 'wagmi'
-import { useVault } from '@/context/VaultContext'
 import { useUserHistory } from '@/utils/useUserHistory'
+import { useRWA } from '@/context/RWAContext'
 import {
   Card,
   CardContent,
@@ -13,9 +13,8 @@ import {
 import { useEffect, useState } from 'react'
 import { readContract } from 'wagmi/actions'
 import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
-import { mockTokenAddresses, vaultAddress } from '@/constants'
+import { mockTokenAddresses } from '@/constants'
 import mockUSDCAbiJson from '@/abis/MockUSDC.abi.json'
-import vaultAbiJson from '@/abis/Vault.abi.json'
 import { formatUnits } from 'viem'
 import type { Abi } from 'viem'
 import { Wallet, TrendingUp, Target, DollarSign } from 'lucide-react'
@@ -26,13 +25,16 @@ interface VaultSummaryProps {
 
 const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
   const { address } = useAccount()
-  const { userShares, assetDecimals } = useVault()
   const { history } = useUserHistory(address, 6)
+  const { totalValue: rwaTotalValue } = useRWA()
+
+  // rwaTotalValue est déjà un number normalisé en USDC
+  const rwaValueNumber = rwaTotalValue || 0
 
   const [userBalance, setUserBalance] = useState<bigint | null>(null)
-  const [portfolioValue, setPortfolioValue] = useState<string>('0')
+  const [localTotalInvested, setLocalTotalInvested] = useState<number>(0)
+  const [pendingDeposits, setPendingDeposits] = useState<number>(0)
 
-  const vaultAbi = (vaultAbiJson.abi ?? vaultAbiJson) as Abi
   const usdcAbi = (mockUSDCAbiJson.abi ?? mockUSDCAbiJson) as Abi
 
   // ✅ Récupère le solde mUSDC de l'utilisateur
@@ -59,34 +61,51 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
     return () => window.removeEventListener('vault-refresh', handler)
   }, [address, usdcAbi])
 
-  // ✅ Calcule la valeur du portefeuille via convertToAssets
+  // ✅ Gestion du total investi local pour refresh immédiat
   useEffect(() => {
-    const fetchPortfolioValue = async () => {
-      if (!userShares || !assetDecimals || userShares === 0n) {
-        setPortfolioValue('0')
-        return
-      }
+    const totalFromHistory = history
+      .filter((item) => item.type === 'Dépôt')
+      .reduce((sum, item) => sum + item.amount, 0)
 
-      try {
-        const result = await readContract(wagmiConfig, {
-          abi: vaultAbi,
-          address: vaultAddress as `0x${string}`,
-          functionName: 'convertToAssets',
-          args: [userShares],
-        })
+    // Total = historique blockchain + dépôts en attente
+    setLocalTotalInvested(totalFromHistory + pendingDeposits)
+  }, [history, pendingDeposits])
 
-        const formatted = formatUnits(result as bigint, assetDecimals)
-        setPortfolioValue(formatted)
-      } catch {
-        setPortfolioValue('0')
+  // ✅ Écouter les dépôts en cours
+  useEffect(() => {
+    const handleDepositStart = (event: CustomEvent) => {
+      const amount = event.detail?.amount
+      if (amount) {
+        setPendingDeposits((prev) => prev + amount)
       }
     }
 
-    fetchPortfolioValue()
-    const handler = () => fetchPortfolioValue()
-    window.addEventListener('vault-refresh', handler)
-    return () => window.removeEventListener('vault-refresh', handler)
-  }, [userShares, assetDecimals, vaultAbi])
+    const handleDepositSuccess = () => {
+      // Réinitialiser les dépôts en attente après succès
+      setPendingDeposits(0)
+    }
+
+    const handleDepositError = () => {
+      // Réinitialiser les dépôts en attente après erreur
+      setPendingDeposits(0)
+    }
+
+    window.addEventListener(
+      'deposit-start',
+      handleDepositStart as EventListener
+    )
+    window.addEventListener('deposit-success', handleDepositSuccess)
+    window.addEventListener('deposit-error', handleDepositError)
+
+    return () => {
+      window.removeEventListener(
+        'deposit-start',
+        handleDepositStart as EventListener
+      )
+      window.removeEventListener('deposit-success', handleDepositSuccess)
+      window.removeEventListener('deposit-error', handleDepositError)
+    }
+  }, [])
 
   const formatCurrency = (value: string | number) => {
     const numValue = typeof value === 'string' ? parseFloat(value) : value
@@ -101,20 +120,15 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
       .replace('USD', 'USDC')
   }
 
-  // Calculer le total investi à partir de l'historique
-  const totalInvested = history
-    .filter((item) => item.type === 'Dépôt')
-    .reduce((sum, item) => sum + item.amount, 0)
-
   // Calculer la performance
   const calculatePerformance = () => {
-    if (!portfolioValue || totalInvested === 0)
+    if (!rwaValueNumber || localTotalInvested === 0)
       return { value: 0, percentage: 0, isPositive: false }
 
-    const currentValue = parseFloat(portfolioValue)
-    const performance = currentValue - totalInvested
+    const currentValue = rwaValueNumber
+    const performance = currentValue - localTotalInvested
     const percentage =
-      totalInvested > 0 ? (performance / totalInvested) * 100 : 0
+      localTotalInvested > 0 ? (performance / localTotalInvested) * 100 : 0
 
     return {
       value: performance,
@@ -159,7 +173,9 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
             <div>
               <p className="text-sm font-medium text-gray-600">Total investi</p>
               <p className="text-lg font-bold text-green-900">
-                {totalInvested === 0 ? '...' : formatCurrency(totalInvested)}
+                {localTotalInvested === 0
+                  ? '...'
+                  : formatCurrency(localTotalInvested)}
               </p>
             </div>
           </div>
@@ -174,16 +190,14 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
                 Valeur actuelle du portefeuille
               </p>
               <p className="text-lg font-bold text-purple-900">
-                {portfolioValue === '0'
-                  ? '...'
-                  : formatCurrency(portfolioValue)}
+                {rwaValueNumber === 0 ? '...' : formatCurrency(rwaValueNumber)}
               </p>
             </div>
           </div>
         </div>
 
         {/* Performance */}
-        {totalInvested > 0 && (
+        {localTotalInvested > 0 && (
           <div className="flex items-center justify-between p-4 bg-orange-50 rounded-lg">
             <div className="flex items-center gap-3">
               {performance.isPositive ? (

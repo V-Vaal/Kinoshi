@@ -59,11 +59,21 @@ const SimpleDepositForm: React.FC = () => {
       })
       setAmount('')
       setTxHash(undefined)
-      window.dispatchEvent(new Event('vault-refresh'))
+
+      // Dispatcher l'événement de succès
+      window.dispatchEvent(new Event('deposit-success'))
+
+      // Refresh immédiat pour mettre à jour les données
+      setTimeout(() => {
+        window.dispatchEvent(new Event('vault-refresh'))
+      }, 1000) // Petit délai pour laisser le temps à la blockchain
     }
     if (isTxError) {
       setContractError('Erreur lors de la confirmation de la transaction.')
       setTxHash(undefined)
+
+      // Dispatcher l'événement d'erreur
+      window.dispatchEvent(new Event('deposit-error'))
     }
   }, [isTxSuccess, isTxError])
 
@@ -80,6 +90,13 @@ const SimpleDepositForm: React.FC = () => {
 
     setContractError(null)
     setIsLoading(true)
+
+    // Dispatcher l'événement de début de dépôt
+    window.dispatchEvent(
+      new CustomEvent('deposit-start', {
+        detail: { amount: amountFloat },
+      })
+    )
 
     try {
       const amountBigInt = parseUnits(amount, assetDecimals)
@@ -149,6 +166,9 @@ const SimpleDepositForm: React.FC = () => {
         }
       }
       setContractError(message)
+
+      // Dispatcher l'événement d'erreur
+      window.dispatchEvent(new Event('deposit-error'))
     } finally {
       setIsLoading(false)
     }
