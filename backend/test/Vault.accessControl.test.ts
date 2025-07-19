@@ -154,7 +154,7 @@ describe("Vault – AccessControl", function () {
       await vault.connect(owner).setFeeReceiver(owner.address);
       await vault.connect(owner).setFees(50, 100);
 
-      const depositAmount = ethers.parseUnits("1000", 6);
+      const depositAmount = ethers.parseUnits("1000", 18);
       await mockUSDC
         .connect(user1)
         .approve(await vault.getAddress(), depositAmount);

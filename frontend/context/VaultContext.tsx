@@ -15,6 +15,7 @@ import {
   waitForTransactionReceipt,
 } from 'wagmi/actions'
 import type { Abi } from 'viem'
+import { formatUnits } from 'viem'
 import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
 import vaultAbiJson from '@/abis/Vault.abi.json'
 import { vaultAddress } from '@/constants'
@@ -28,6 +29,7 @@ export interface VaultContextType {
   totalSupply: bigint | null
   decimals: number | null
   assetDecimals: number | null // Ajout des décimales du token sous-jacent
+  userPortfolioValue: bigint | null // Valeur du portefeuille utilisateur en USDC
   previewDeposit: (amount: bigint) => Promise<bigint>
   previewRedeem: (shares: bigint) => Promise<bigint>
   deposit: (amount: bigint) => Promise<void>
@@ -51,6 +53,9 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
   const [totalSupply, setTotalSupply] = useState<bigint | null>(null)
   const [decimals, setDecimals] = useState<number | null>(null)
   const [assetDecimals, setAssetDecimals] = useState<number | null>(null) // Ajout
+  const [userPortfolioValue, setUserPortfolioValue] = useState<bigint | null>(
+    null
+  ) // Valeur du portefeuille utilisateur
 
   // Récupère toutes les infos du contrat
   const fetchVaultData = useCallback(async () => {
@@ -114,6 +119,25 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
       setTotalSupply(supply)
       setDecimals(dec)
       setAssetDecimals(assetDec)
+
+      // Calculer la valeur du portefeuille utilisateur
+      if (shares && shares > 0n) {
+        try {
+          const portfolioValue = (await readContract(wagmiConfig, {
+            abi: vaultAbi,
+            address: vaultAddress as `0x${string}`,
+            functionName: 'convertToAssets',
+            args: [shares],
+          })) as bigint
+
+          setUserPortfolioValue(portfolioValue)
+        } catch (err) {
+          console.error('Erreur lors du calcul de userPortfolioValue:', err)
+          setUserPortfolioValue(null)
+        }
+      } else {
+        setUserPortfolioValue(null)
+      }
     } catch (err) {
       console.error('Erreur lors de la récupération des données du Vault:', err)
       setTotalAssets(null)
@@ -121,6 +145,7 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
       setTotalSupply(null)
       setDecimals(null)
       setAssetDecimals(null)
+      setUserPortfolioValue(null)
     }
   }, [address])
 
@@ -130,6 +155,13 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
       fetchVaultData()
     }
   }, [isConnected, address, fetchVaultData])
+
+  // Écouter les événements de refresh
+  useEffect(() => {
+    const handler = () => fetchVaultData()
+    window.addEventListener('vault-refresh', handler)
+    return () => window.removeEventListener('vault-refresh', handler)
+  }, [fetchVaultData])
 
   // previewDeposit
   const previewDeposit = useCallback(async (amount: bigint) => {
@@ -198,7 +230,8 @@ export const VaultProvider = ({ children }: { children: ReactNode }) => {
     userShares,
     totalSupply,
     decimals,
-    assetDecimals, // Ajout
+    assetDecimals,
+    userPortfolioValue,
     previewDeposit,
     previewRedeem,
     deposit,

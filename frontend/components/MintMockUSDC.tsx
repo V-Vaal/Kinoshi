@@ -56,6 +56,7 @@ const MintMockUSDC: React.FC = () => {
       })
       toast.success('1000 mUSDC ajoutés à votre portefeuille !')
       await fetchVaultData()
+      // Rafraîchir les données du Vault
       window.dispatchEvent(new Event('vault-refresh'))
     } catch (e) {
       toast.error('Erreur lors du mint : ' + (e as Error).message)

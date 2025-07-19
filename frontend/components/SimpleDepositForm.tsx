@@ -65,12 +65,20 @@ const SimpleDepositForm: React.FC = () => {
 
       // Refresh immédiat pour mettre à jour les données
       setTimeout(() => {
+        // Rafraîchir les données du Vault
         window.dispatchEvent(new Event('vault-refresh'))
       }, 1000) // Petit délai pour laisser le temps à la blockchain
     }
     if (isTxError) {
-      setContractError('Erreur lors de la confirmation de la transaction.')
+      const errorMessage = 'Erreur lors de la confirmation de la transaction.'
+      setContractError(errorMessage)
       setTxHash(undefined)
+
+      // Toast d'erreur
+      toast.error("❌ Échec de l'investissement", {
+        description: errorMessage,
+        duration: 5000,
+      })
 
       // Dispatcher l'événement d'erreur
       window.dispatchEvent(new Event('deposit-error'))
@@ -166,6 +174,12 @@ const SimpleDepositForm: React.FC = () => {
         }
       }
       setContractError(message)
+
+      // Toast d'erreur
+      toast.error('❌ Erreur de dépôt', {
+        description: message,
+        duration: 5000,
+      })
 
       // Dispatcher l'événement d'erreur
       window.dispatchEvent(new Event('deposit-error'))

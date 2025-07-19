@@ -71,13 +71,7 @@ contract Vault is ERC4626, AccessControl, Pausable, ReentrancyGuard {
         _grantRole(ADMIN_ROLE, msg.sender);
     }
 
-    function normalizeAmount(uint256 amount, uint8 decimals) internal pure returns (uint256) {
-        return decimals == 18 ? amount : decimals < 18 ? amount * (10 ** (18 - decimals)) : amount / (10 ** (decimals - 18));
-    }
 
-    function denormalizeAmount(uint256 amount, uint8 decimals) internal pure returns (uint256) {
-        return decimals == 18 ? amount : decimals < 18 ? amount / (10 ** (18 - decimals)) : amount * (10 ** (decimals - 18));
-    }
 
     function setAllocations(AssetAllocation[] memory newAllocations) external onlyRole(ADMIN_ROLE) {
         require(newAllocations.length > 0, "Allocations cannot be empty");
@@ -109,10 +103,10 @@ contract Vault is ERC4626, AccessControl, Pausable, ReentrancyGuard {
 
     function bootstrapVault() external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (totalSupply() > 0) revert VaultAlreadyBootstrapped();
-        uint256 amount = 200e6;
+        uint256 amount = 1e18; // 1 token en 18 décimales (standard ERC4626)
         IERC20(asset()).safeTransferFrom(treasury, address(this), amount);
         require(IERC20(asset()).balanceOf(address(this)) >= amount, "Transfer failed");
-        uint256 shares = normalizeAmount(amount, 6);
+        uint256 shares = amount; // Plus besoin de conversion, déjà en 18 décimales
         _mint(treasury, shares);
         emit VaultBootstrapped(amount, shares);
         emit Deposited(treasury, amount);
@@ -164,21 +158,29 @@ contract Vault is ERC4626, AccessControl, Pausable, ReentrancyGuard {
         if (assets == 0) revert InvalidAmount();
         uint256 shares = super.deposit(assets, receiver);
         emit Deposited(receiver, assets);
+        _mockAllocate(assets);
+        return shares;
+    }
 
+    function _mockAllocate(uint256 assets) internal {
+        // assets est déjà en 18 décimales (tous les tokens standardisés)
         for (uint256 i = 0; i < allocations.length; i++) {
             AssetAllocation memory allocation = allocations[i];
             if (!allocation.active || allocation.token == asset()) continue;
-            uint256 normalizedAssets = normalizeAmount(assets, 6);
-            uint256 normalizedAllocation = (normalizedAssets * allocation.weight) / 1e18;
-            uint8 tokenDecimals = registry.getTokenDecimals(allocation.token);
-            uint256 allocationAmount = denormalizeAmount(normalizedAllocation, tokenDecimals);
-            (bool success, ) = allocation.token.call(abi.encodeWithSignature("mint(address,uint256)", address(this), allocationAmount));
+            
+            // Calculer l'allocation (tous les tokens en 18 décimales)
+            uint256 allocationAmount = (assets * allocation.weight) / 1e18;
+            
+            // Plus besoin de conversion, tous les tokens ont 18 décimales
+            uint256 rwaAmount = allocationAmount;
+            
+            // Mint les RWA
+            (bool success, ) = allocation.token.call(
+                abi.encodeWithSignature("mint(address,uint256)", address(this), rwaAmount)
+            );
             require(success, "Mint RWA failed");
-            emit Allocated(allocation.token, allocationAmount);
+            emit Allocated(allocation.token, rwaAmount);
         }
-
-        IERC20MintableBurnable(address(asset())).burn(address(this), assets);
-        return shares;
     }
 
     function withdraw(uint256, address, address) public pure override returns (uint256) {
@@ -192,23 +194,21 @@ contract Vault is ERC4626, AccessControl, Pausable, ReentrancyGuard {
         uint256 fee = (assets * exitFeeBps) / 10_000;
         uint256 assetsAfterFee = assets - fee;
 
-        // Brûler les shares de l'owner
         _burn(owner, shares);
 
-        // Brûler les RWA tokens correspondants
         for (uint256 i = 0; i < allocations.length; i++) {
             AssetAllocation memory allocation = allocations[i];
             if (!allocation.active || allocation.token == asset()) continue;
             
-            uint256 normalizedAssets = normalizeAmount(assets, 6);
-            uint256 normalizedAllocation = (normalizedAssets * allocation.weight) / 1e18;
-            uint8 tokenDecimals = registry.getTokenDecimals(allocation.token);
-            uint256 allocationAmount = denormalizeAmount(normalizedAllocation, tokenDecimals);
+            // Calculer l'allocation (tous les tokens en 18 décimales)
+            uint256 allocationAmount = (assets * allocation.weight) / 1e18;
             
-            IERC20MintableBurnable(allocation.token).burn(address(this), allocationAmount);
+            // Plus besoin de conversion, tous les tokens ont 18 décimales
+            uint256 rwaAmount = allocationAmount;
+            
+            IERC20MintableBurnable(allocation.token).burn(address(this), rwaAmount);
         }
 
-        // Mint les USDC pour l'utilisateur
         IERC20MintableBurnable(address(asset())).mint(receiver, assetsAfterFee);
 
         if (fee > 0) {
@@ -223,10 +223,9 @@ contract Vault is ERC4626, AccessControl, Pausable, ReentrancyGuard {
     function _getAssetValue(address token, uint256 balance) internal view returns (uint256) {
         if (balance == 0) return 0;
         (uint256 price, ) = oracle.getPrice(token);
-        uint8 tokenDecimals = registry.getTokenDecimals(token);
-        uint256 normalizedBalance = normalizeAmount(balance, tokenDecimals);
-        uint256 valueIn18Decimals = (normalizedBalance * price) / 1e18;
-        return denormalizeAmount(valueIn18Decimals, 6);
+        // Plus besoin de conversion, tous les tokens ont 18 décimales
+        uint256 valueIn18Decimals = (balance * price) / 1e18;
+        return valueIn18Decimals; // Déjà en 18 décimales
     }
 
     function totalAssets() public view override returns (uint256) {
@@ -236,16 +235,14 @@ contract Vault is ERC4626, AccessControl, Pausable, ReentrancyGuard {
             if (allocation.active) {
                 uint256 balance = IERC20(allocation.token).balanceOf(address(this));
                 uint256 assetValue = _getAssetValue(allocation.token, balance);
-                uint256 weightedValue = (assetValue * allocation.weight) / 1e18;
-                totalValue += weightedValue;
+                totalValue += assetValue;
+
             }
         }
         return totalValue;
     }
 
-    function _decimalsOffset() internal pure override returns (uint8) {
-        return 12;
-    }
+
 
     receive() external payable {
         revert EtherNotAccepted();

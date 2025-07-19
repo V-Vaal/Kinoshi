@@ -9,31 +9,31 @@ export async function deployVaultFixture() {
   const tokenRegistry = await TokenRegistry.deploy();
   await tokenRegistry.waitForDeployment();
 
-  // Déploiement du MockUSDC (6 décimales)
+  // Déploiement du MockUSDC (18 décimales - standardisé)
   const MockUSDC = await ethers.getContractFactory("MockUSDC");
-  const mockUSDC = await MockUSDC.deploy("Mock USDC", "mUSDC", 6);
+  const mockUSDC = await MockUSDC.deploy("Mock USDC", "mUSDC");
   await mockUSDC.waitForDeployment();
 
   // Mint pour les utilisateurs AVANT toute action (10 000 mUSDC chacun)
-  await mockUSDC.mint(owner.address, parseUnits("10000", 6));
-  await mockUSDC.mint(user1.address, parseUnits("10000", 6));
-  await mockUSDC.mint(user2.address, parseUnits("10000", 6));
+  await mockUSDC.mint(owner.address, parseUnits("10000", 18));
+  await mockUSDC.mint(user1.address, parseUnits("10000", 18));
+  await mockUSDC.mint(user2.address, parseUnits("10000", 18));
 
   // Enregistrement du MockUSDC dans le TokenRegistry
-  await tokenRegistry.registerToken(await mockUSDC.getAddress(), "mUSDC", 6);
+  await tokenRegistry.registerToken(await mockUSDC.getAddress(), "mUSDC", 18);
 
   // Déploiement de RWA tokens mock
   const MockRWA1 = await ethers.getContractFactory("MockUSDC");
-  const mockRWA1 = await MockRWA1.deploy("Mock RWA 1", "mRWA1", 6);
+  const mockRWA1 = await MockRWA1.deploy("Mock RWA 1", "mRWA1");
   await mockRWA1.waitForDeployment();
 
   const MockRWA2 = await ethers.getContractFactory("MockUSDC");
-  const mockRWA2 = await MockRWA2.deploy("Mock RWA 2", "mRWA2", 6);
+  const mockRWA2 = await MockRWA2.deploy("Mock RWA 2", "mRWA2");
   await mockRWA2.waitForDeployment();
 
   // Enregistrement des RWA tokens
-  await tokenRegistry.registerToken(await mockRWA1.getAddress(), "mRWA1", 6);
-  await tokenRegistry.registerToken(await mockRWA2.getAddress(), "mRWA2", 6);
+  await tokenRegistry.registerToken(await mockRWA1.getAddress(), "mRWA1", 18);
+  await tokenRegistry.registerToken(await mockRWA2.getAddress(), "mRWA2", 18);
 
   // Déploiement du MockPriceFeed
   const MockPriceFeed = await ethers.getContractFactory("MockPriceFeed");
@@ -95,16 +95,16 @@ export async function deployVaultFixtureEmpty() {
   const tokenRegistry = await TokenRegistry.deploy();
   await tokenRegistry.waitForDeployment();
 
-  // Déploiement du MockUSDC (6 décimales)
+  // Déploiement du MockUSDC (18 décimales - standardisé)
   const MockUSDC = await ethers.getContractFactory("MockUSDC");
-  const mockUSDC = await MockUSDC.deploy("Mock USDC", "mUSDC", 6);
+  const mockUSDC = await MockUSDC.deploy("Mock USDC", "mUSDC");
   await mockUSDC.waitForDeployment();
 
   // Mint 10 USDC au owner pour le bootstrap
-  await mockUSDC.mint(owner.address, parseUnits("10", 6));
+  await mockUSDC.mint(owner.address, parseUnits("10", 18));
 
   // Enregistrement du MockUSDC dans le TokenRegistry
-  await tokenRegistry.registerToken(await mockUSDC.getAddress(), "mUSDC", 6);
+  await tokenRegistry.registerToken(await mockUSDC.getAddress(), "mUSDC", 18);
 
   // Déploiement du MockPriceFeed
   const MockPriceFeed = await ethers.getContractFactory("MockPriceFeed");

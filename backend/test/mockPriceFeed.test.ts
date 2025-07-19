@@ -12,7 +12,7 @@ describe("MockPriceFeed", function () {
 
     // Déploiement de tokens mockés pour les tests
     const MockUSDC = await ethers.getContractFactory("MockUSDC");
-    const mockUSDC = await MockUSDC.deploy("Mock USDC", "mUSDC", 6);
+    const mockUSDC = await MockUSDC.deploy("Mock USDC", "mUSDC");
     await mockUSDC.waitForDeployment();
 
     const MockBTC = await ethers.getContractFactory("MockBTC");
@@ -44,8 +44,8 @@ describe("MockPriceFeed", function () {
         deployMockPriceFeedFixture
       );
 
-      const price = ethers.parseUnits("1", 6); // 1 USDC = 1 USDC (6 décimales)
-      const decimals = 6;
+      const price = ethers.parseUnits("1", 18); // 1 USDC = 1 USDC (18 décimales standardisées)
+      const decimals = 18;
 
       await expect(
         mockPriceFeed
@@ -61,9 +61,9 @@ describe("MockPriceFeed", function () {
         deployMockPriceFeedFixture
       );
 
-      const price1 = ethers.parseUnits("50000", 6); // 1 BTC = 50,000 USDC
-      const price2 = ethers.parseUnits("60000", 6); // 1 BTC = 60,000 USDC
-      const decimals = 6;
+      const price1 = ethers.parseUnits("50000", 18); // 1 BTC = 50,000 USDC
+      const price2 = ethers.parseUnits("60000", 18); // 1 BTC = 60,000 USDC
+      const decimals = 18;
 
       await mockPriceFeed
         .connect(owner)
@@ -83,8 +83,8 @@ describe("MockPriceFeed", function () {
         deployMockPriceFeedFixture
       );
 
-      const price = ethers.parseUnits("1", 6);
-      const decimals = 6;
+      const price = ethers.parseUnits("1", 18);
+      const decimals = 18;
 
       await expect(
         mockPriceFeed
@@ -101,8 +101,8 @@ describe("MockPriceFeed", function () {
         deployMockPriceFeedFixture
       );
 
-      const price = ethers.parseUnits("1", 6);
-      const decimals = 6;
+      const price = ethers.parseUnits("1", 18);
+      const decimals = 18;
 
       await expect(
         mockPriceFeed
@@ -117,7 +117,7 @@ describe("MockPriceFeed", function () {
       );
 
       const price = 0;
-      const decimals = 6;
+      const decimals = 18;
 
       await expect(
         mockPriceFeed
@@ -133,8 +133,8 @@ describe("MockPriceFeed", function () {
         deployMockPriceFeedFixture
       );
 
-      const price = ethers.parseUnits("1", 8); // Prix avec 8 décimales
-      const decimals = 8;
+      const price = ethers.parseUnits("1", 18); // Prix avec 18 décimales (standardisé)
+      const decimals = 18;
 
       await expect(
         mockPriceFeed
@@ -152,8 +152,8 @@ describe("MockPriceFeed", function () {
         deployMockPriceFeedFixture
       );
 
-      const expectedPrice = ethers.parseUnits("100000", 6); // 1 BTC = 100,000 USDC
-      const expectedDecimals = 6;
+      const expectedPrice = ethers.parseUnits("100000", 18); // 1 BTC = 100,000 USDC
+      const expectedDecimals = 18;
 
       await mockPriceFeed
         .connect(owner)
@@ -184,7 +184,7 @@ describe("MockPriceFeed", function () {
 
       await mockPriceFeed
         .connect(owner)
-        .setPrice(await mockUSDC.getAddress(), 0, 6);
+        .setPrice(await mockUSDC.getAddress(), 0, 18);
 
       await expect(
         mockPriceFeed.getPrice(await mockUSDC.getAddress())
@@ -196,15 +196,15 @@ describe("MockPriceFeed", function () {
         deployMockPriceFeedFixture
       );
 
-      const usdcPrice = ethers.parseUnits("1", 6); // 1 USDC = 1 USDC
-      const btcPrice = ethers.parseUnits("100000", 6); // 1 BTC = 100,000 USDC
+      const usdcPrice = ethers.parseUnits("1", 18); // 1 USDC = 1 USDC
+      const btcPrice = ethers.parseUnits("100000", 18); // 1 BTC = 100,000 USDC
 
       await mockPriceFeed
         .connect(owner)
-        .setPrice(await mockUSDC.getAddress(), usdcPrice, 6);
+        .setPrice(await mockUSDC.getAddress(), usdcPrice, 18);
       await mockPriceFeed
         .connect(owner)
-        .setPrice(await mockBTC.getAddress(), btcPrice, 6);
+        .setPrice(await mockBTC.getAddress(), btcPrice, 18);
 
       const [usdcRetrievedPrice, usdcDecimals] = await mockPriceFeed.getPrice(
         await mockUSDC.getAddress()
@@ -215,8 +215,8 @@ describe("MockPriceFeed", function () {
 
       expect(usdcRetrievedPrice).to.equal(usdcPrice);
       expect(btcRetrievedPrice).to.equal(btcPrice);
-      expect(usdcDecimals).to.equal(6);
-      expect(btcDecimals).to.equal(6);
+      expect(usdcDecimals).to.equal(18);
+      expect(btcDecimals).to.equal(18);
     });
   });
 
@@ -226,10 +226,10 @@ describe("MockPriceFeed", function () {
         deployMockPriceFeedFixture
       );
 
-      const price = ethers.parseUnits("1", 6);
+      const price = ethers.parseUnits("1", 18);
       await mockPriceFeed
         .connect(owner)
-        .setPrice(await mockUSDC.getAddress(), price, 6);
+        .setPrice(await mockUSDC.getAddress(), price, 18);
 
       expect(await mockPriceFeed.hasPrice(await mockUSDC.getAddress())).to.be
         .true;
@@ -251,7 +251,7 @@ describe("MockPriceFeed", function () {
 
       await mockPriceFeed
         .connect(owner)
-        .setPrice(await mockUSDC.getAddress(), 0, 6);
+        .setPrice(await mockUSDC.getAddress(), 0, 18);
 
       expect(await mockPriceFeed.hasPrice(await mockUSDC.getAddress())).to.be
         .false;
@@ -264,10 +264,10 @@ describe("MockPriceFeed", function () {
         deployMockPriceFeedFixture
       );
 
-      const price = ethers.parseUnits("1", 6);
+      const price = ethers.parseUnits("1", 18);
       await mockPriceFeed
         .connect(owner)
-        .setPrice(await mockUSDC.getAddress(), price, 6);
+        .setPrice(await mockUSDC.getAddress(), price, 18);
 
       // Vérifie que la fonction getPrice retourne bien (uint256, uint8)
       const result = await mockPriceFeed.getPrice(await mockUSDC.getAddress());

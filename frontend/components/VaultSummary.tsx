@@ -2,7 +2,7 @@
 
 import { useAccount } from 'wagmi'
 import { useUserHistory } from '@/utils/useUserHistory'
-import { useRWA } from '@/context/RWAContext'
+import { useVault } from '@/context/VaultContext'
 import {
   Card,
   CardContent,
@@ -18,6 +18,7 @@ import mockUSDCAbiJson from '@/abis/MockUSDC.abi.json'
 import { formatUnits } from 'viem'
 import type { Abi } from 'viem'
 import { Wallet, TrendingUp, Target, DollarSign } from 'lucide-react'
+import { formatUSDC } from '@/utils/formatting'
 
 interface VaultSummaryProps {
   className?: string
@@ -25,11 +26,13 @@ interface VaultSummaryProps {
 
 const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
   const { address } = useAccount()
-  const { history } = useUserHistory(address, 6)
-  const { totalValue: rwaTotalValue } = useRWA()
+  const { history } = useUserHistory(address, 18)
+  const { userPortfolioValue } = useVault()
 
-  // rwaTotalValue est déjà un number normalisé en USDC
-  const rwaValueNumber = rwaTotalValue || 0
+  // Convertir userPortfolioValue en number (18 décimales)
+  const rwaValueNumber = userPortfolioValue
+    ? parseFloat(formatUnits(userPortfolioValue, 18))
+    : 0
 
   const [userBalance, setUserBalance] = useState<bigint | null>(null)
   const [localTotalInvested, setLocalTotalInvested] = useState<number>(0)
@@ -158,9 +161,7 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
                 Solde USDC (test)
               </p>
               <p className="text-lg font-bold text-blue-900">
-                {userBalance === null
-                  ? '...'
-                  : formatCurrency(formatUnits(userBalance, 6))}
+                {userBalance === null ? '...' : formatUSDC(userBalance)}
               </p>
             </div>
           </div>

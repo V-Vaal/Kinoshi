@@ -6,8 +6,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract MockUSDC is ERC20 {
     uint8 private immutable _customDecimals;
 
-    constructor(string memory name_, string memory symbol_, uint8 decimals_) ERC20(name_, symbol_) {
-        _customDecimals = decimals_;
+    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {
+        _customDecimals = 18; // Standardisé à 18 décimales
     }
 
     function decimals() public view override returns (uint8) {

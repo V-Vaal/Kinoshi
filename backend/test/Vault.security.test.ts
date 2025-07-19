@@ -121,7 +121,7 @@ describe("Vault.sol – Security", function () {
       await expect(
         vault
           .connect(user1)
-          .withdraw(ethers.parseUnits("500", 6), user1.address, user1.address)
+          .withdraw(ethers.parseUnits("500", 18), user1.address, user1.address)
       ).to.be.revertedWithCustomError(vault, "WithdrawNotSupported");
     });
   });
@@ -159,7 +159,7 @@ describe("Vault.sol – Security", function () {
       const { vault, mockUSDC, user1 } = await loadFixture(deployVaultFixture);
 
       // Dépôt d'un montant très élevé
-      const largeAmount = ethers.parseUnits("1000000000", 6); // 1 milliard USDC
+      const largeAmount = ethers.parseUnits("1000000000", 18); // 1 milliard USDC
       await mintAndApproveMockUSDC(mockUSDC, user1, vault, largeAmount);
       await vault.connect(user1).deposit(largeAmount, user1.address);
 
@@ -176,7 +176,7 @@ describe("Vault.sol – Security", function () {
       const { vault, mockUSDC, user1 } = await loadFixture(deployVaultFixture);
 
       // Dépôt d'un montant élevé mais raisonnable pour les tests
-      const largeAmount = ethers.parseUnits("1000000", 6); // 1 million USDC
+      const largeAmount = ethers.parseUnits("1000000", 18); // 1 million USDC
       await mintAndApproveMockUSDC(mockUSDC, user1, vault, largeAmount);
       await vault.connect(user1).deposit(largeAmount, user1.address);
 
@@ -232,7 +232,7 @@ describe("Vault.sol – Security", function () {
       await vault.connect(owner).setAllocations(manyAllocations);
 
       // Dépôt doit s'exécuter sans timeout
-      const depositAmount = ethers.parseUnits("1000", 6);
+      const depositAmount = ethers.parseUnits("1000", 18);
       await mockUSDC.connect(user1).mint(user1.address, depositAmount);
       await mockUSDC
         .connect(user1)
@@ -249,7 +249,7 @@ describe("Vault.sol – Security", function () {
     );
 
     // user1 dépose d'abord pour initialiser le Vault
-    const initialAmount = ethers.parseUnits("1000", 6);
+    const initialAmount = ethers.parseUnits("1000", 18);
     await mockUSDC.connect(user1).mint(user1.address, initialAmount);
     await mockUSDC
       .connect(user1)
@@ -257,7 +257,7 @@ describe("Vault.sol – Security", function () {
     await vault.connect(user1).deposit(initialAmount, user1.address);
 
     // user1 preview pour un nouveau dépôt
-    const amount = ethers.parseUnits("100", 6);
+    const amount = ethers.parseUnits("100", 18);
     await mockUSDC.connect(user1).mint(user1.address, amount);
     await mockUSDC.connect(user1).approve(await vault.getAddress(), amount);
     const previewShares = await vault.previewDeposit(amount);

@@ -18,13 +18,13 @@ describe("TokenRegistry", function () {
 
     const mockToken = await (
       await ethers.getContractFactory("MockUSDC")
-    ).deploy("Mock USDC", "mUSDC", 6);
+    ).deploy("Mock USDC", "mUSDC");
     const address = await mockToken.getAddress();
 
-    await tokenRegistry.registerToken(address, "mUSDC", 6);
+    await tokenRegistry.registerToken(address, "mUSDC", 18);
 
     expect(await tokenRegistry.isTokenRegistered(address)).to.be.true;
-    expect(await tokenRegistry.getTokenDecimals(address)).to.equal(6);
+    expect(await tokenRegistry.getTokenDecimals(address)).to.equal(18);
   });
 
   it("revert si token est déjà enregistré", async function () {
@@ -32,10 +32,10 @@ describe("TokenRegistry", function () {
 
     const mockToken = await (
       await ethers.getContractFactory("MockUSDC")
-    ).deploy("Mock USDC", "mUSDC", 6);
+    ).deploy("Mock USDC", "mUSDC");
     const address = await mockToken.getAddress();
 
-    await tokenRegistry.registerToken(address, "mUSDC", 6);
+    await tokenRegistry.registerToken(address, "mUSDC", 18);
 
     await expect(
       tokenRegistry.registerToken(address, "mUSDC", 6)
@@ -54,10 +54,10 @@ describe("TokenRegistry", function () {
     const { tokenRegistry } = await deployTokenRegistryFixture();
     const token = await (
       await ethers.getContractFactory("MockUSDC")
-    ).deploy("Mock USDC", "mUSDC", 6);
+    ).deploy("Mock USDC", "mUSDC");
 
     await expect(
-      tokenRegistry.registerToken(await token.getAddress(), "", 6)
+      tokenRegistry.registerToken(await token.getAddress(), "", 18)
     ).to.be.revertedWithCustomError(tokenRegistry, "InvalidSymbol");
   });
 
@@ -97,10 +97,10 @@ describe("TokenRegistry", function () {
 
     const token = await (
       await ethers.getContractFactory("MockUSDC")
-    ).deploy("Mock USDC", "mUSDC", 6);
+    ).deploy("Mock USDC", "mUSDC");
     const address = await token.getAddress();
 
-    await tokenRegistry.registerToken(address, "mUSDC", 6);
+    await tokenRegistry.registerToken(address, "mUSDC", 18);
     await tokenRegistry.unregisterToken(address);
 
     expect(await tokenRegistry.isTokenRegistered(address)).to.be.false;
@@ -111,10 +111,10 @@ describe("TokenRegistry", function () {
 
     const token1 = await (
       await ethers.getContractFactory("MockUSDC")
-    ).deploy("Mock USDC", "mUSDC", 6);
+    ).deploy("Mock USDC", "mUSDC");
     const token2 = await (await ethers.getContractFactory("MockGold")).deploy();
 
-    await tokenRegistry.registerToken(await token1.getAddress(), "mUSDC", 6);
+    await tokenRegistry.registerToken(await token1.getAddress(), "mUSDC", 18);
     await tokenRegistry.registerToken(await token2.getAddress(), "mGOLD", 18);
 
     const result = await tokenRegistry.getRegisteredTokens();
@@ -128,10 +128,10 @@ describe("TokenRegistry", function () {
 
     const token1 = await (
       await ethers.getContractFactory("MockUSDC")
-    ).deploy("Mock USDC", "mUSDC", 6);
+    ).deploy("Mock USDC", "mUSDC");
     const token2 = await (await ethers.getContractFactory("MockGold")).deploy();
 
-    await tokenRegistry.registerToken(await token1.getAddress(), "mUSDC", 6);
+    await tokenRegistry.registerToken(await token1.getAddress(), "mUSDC", 18);
     await tokenRegistry.registerToken(await token2.getAddress(), "mGOLD", 18);
 
     expect(await tokenRegistry.getTokenCount()).to.equal(2);

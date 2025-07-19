@@ -48,10 +48,10 @@ export const FEE_CONFIG = {
   MAX_SLIPPAGE_BPS: 500, // 5%
 };
 
-// Configuration des décimales
+// Configuration des décimales (tous standardisés à 18)
 export const DECIMALS_CONFIG = {
-  USDC: 6,
-  BTC: 8,
+  USDC: 18,
+  BTC: 18,
   GOLD: 18,
   BONDS: 18,
   EQUITY: 18,

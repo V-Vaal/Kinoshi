@@ -20,7 +20,7 @@ describe("Vault.sol – Core", function () {
   });
 
   describe("Vault – Bootstrap", function () {
-    it("bootstrapVault() initialise le Vault avec 200 USDC vers le treasury", async function () {
+    it("bootstrapVault() initialise le Vault avec 1 USDC vers le treasury", async function () {
       const { vault, owner, mockUSDC, treasury, tokenRegistry } =
         await loadFixture(deployVaultFixtureEmpty);
 
@@ -34,11 +34,11 @@ describe("Vault.sol – Core", function () {
       ];
       await vault.connect(owner).setAllocations(allocations);
 
-      // Mint 200 USDC au treasury et approve pour le bootstrap
-      await mockUSDC.mint(treasury.address, parseUnits("200", 6));
+      // Mint 1 USDC au treasury et approve pour le bootstrap
+      await mockUSDC.mint(treasury.address, parseUnits("1", 18));
       await mockUSDC
         .connect(treasury)
-        .approve(await vault.getAddress(), parseUnits("200", 6));
+        .approve(await vault.getAddress(), parseUnits("1", 18));
 
       const treasurySharesBefore = await vault.balanceOf(treasury.address);
       const vaultAssetsBefore = await vault.totalAssets();
@@ -77,8 +77,8 @@ describe("Vault.sol – Core", function () {
       // Approve et dépôt initial (simulateur d'utilisateur)
       await mockUSDC
         .connect(owner)
-        .approve(await vault.getAddress(), parseUnits("2", 6));
-      await vault.connect(owner).deposit(parseUnits("1", 6), owner.address);
+        .approve(await vault.getAddress(), parseUnits("2", 18));
+      await vault.connect(owner).deposit(parseUnits("1", 18), owner.address);
 
       // Tente de bootstrap après un dépôt
       await expect(
@@ -107,7 +107,7 @@ describe("Vault.sol – Core", function () {
     it("dépôt initial valide", async function () {
       const { vault, mockUSDC, user1 } = await loadFixture(deployVaultFixture);
 
-      const depositAmount = ethers.parseUnits("1000", 6);
+      const depositAmount = ethers.parseUnits("1000", 18);
       await mockUSDC
         .connect(user1)
         .approve(await vault.getAddress(), depositAmount);
@@ -120,21 +120,19 @@ describe("Vault.sol – Core", function () {
       // totalAssets() calcule la valeur des RWA basée sur les prix oracle
       // Peut retourner 0 si les prix oracle ne sont pas configurés correctement
       expect(await vault.totalAssets()).to.be.gte(0);
-      expect(await vault.balanceOf(user1.address)).to.eq(
-        depositAmount * 10n ** 12n
-      ); // 6→18 décimales
+      expect(await vault.balanceOf(user1.address)).to.eq(depositAmount); // Plus de conversion, déjà en 18 décimales
       // L'utilisateur garde ses USDC restants (10000 - 1000 = 9000)
       expect(await mockUSDC.balanceOf(user1.address)).to.eq(
-        ethers.parseUnits("9000", 6)
+        ethers.parseUnits("9000", 18)
       );
     });
 
     it("convertit correctement les assets en shares (1:1, 6→18 décimales)", async function () {
       const { vault } = await loadFixture(deployVaultFixture);
 
-      const amount = ethers.parseUnits("500", 6);
+      const amount = ethers.parseUnits("500", 18);
       const shares = await vault.convertToShares(amount);
-      expect(shares).to.eq(amount * 10n ** 12n);
+      expect(shares).to.eq(amount);
 
       // Conversion inverse
       expect(await vault.convertToAssets(shares)).to.eq(amount);
@@ -144,7 +142,7 @@ describe("Vault.sol – Core", function () {
       const { vault, mockUSDC, user1 } = await loadFixture(deployVaultFixture);
 
       // Dépôt initial de 1000 USDC
-      const depositAmount = ethers.parseUnits("1000", 6);
+      const depositAmount = ethers.parseUnits("1000", 18);
       await mockUSDC
         .connect(user1)
         .approve(await vault.getAddress(), depositAmount);
@@ -189,7 +187,7 @@ describe("Vault.sol – Core", function () {
       const { vault, mockUSDC, user1 } = await loadFixture(deployVaultFixture);
 
       // Dépôt de 1 USDC (très petit montant)
-      const depositAmount = ethers.parseUnits("1", 6);
+      const depositAmount = ethers.parseUnits("1", 18);
       await mockUSDC
         .connect(user1)
         .approve(await vault.getAddress(), depositAmount);
@@ -198,16 +196,14 @@ describe("Vault.sol – Core", function () {
         .to.emit(vault, "Deposited")
         .withArgs(user1.address, depositAmount);
 
-      expect(await vault.balanceOf(user1.address)).to.eq(
-        depositAmount * 10n ** 12n
-      );
+      expect(await vault.balanceOf(user1.address)).to.eq(depositAmount);
     });
 
     it("permet de retirer de petits montants sans minimum", async function () {
       const { vault, mockUSDC, user1 } = await loadFixture(deployVaultFixture);
 
       // Dépôt initial de 100 USDC
-      const depositAmount = ethers.parseUnits("100", 6);
+      const depositAmount = ethers.parseUnits("100", 18);
       await mockUSDC
         .connect(user1)
         .approve(await vault.getAddress(), depositAmount);
@@ -231,24 +227,24 @@ describe("Vault.sol – Core", function () {
       const { parseUnits } = ethers;
       const [owner, user1] = await ethers.getSigners();
 
-      // Déployer MockBTC à 8 décimales
+      // Déployer MockBTC à 18 décimales (standardisé)
       const MockBTC = await ethers.getContractFactory("MockUSDC");
-      const mockBTC = await MockBTC.deploy("MockBTC", "mBTC", 8);
+      const mockBTC = await MockBTC.deploy("MockBTC", "mBTC");
 
       // Déployer TokenRegistry et Vault
       const TokenRegistry = await ethers.getContractFactory("TokenRegistry");
       const registry = await TokenRegistry.deploy();
       await registry
         .connect(owner)
-        .registerToken(await mockBTC.getAddress(), "mBTC", 8);
+        .registerToken(await mockBTC.getAddress(), "mBTC", 18);
 
       // Déployer un oracle mock
       const MockPriceFeed = await ethers.getContractFactory("MockPriceFeed");
       const oracle = await MockPriceFeed.deploy(owner.address);
       await oracle.setPrice(
         await mockBTC.getAddress(),
-        parseUnits("100000", 8),
-        8
+        parseUnits("100000", 18),
+        18
       );
 
       // Déployer le Vault avec MockBTC comme asset (⚠️ uniquement pour ce test)
@@ -272,14 +268,14 @@ describe("Vault.sol – Core", function () {
       await vault.connect(owner).setAllocations(allocation);
 
       // Mint 1 BTC à user1
-      const fullAmount = parseUnits("1", 8);
+      const fullAmount = parseUnits("1", 18);
       await mockBTC.mint(user1.address, fullAmount);
       await mockBTC
         .connect(user1)
         .approve(await vault.getAddress(), fullAmount);
 
       // Dépôt de 0.5 BTC
-      const depositAmount = parseUnits("0.5", 8);
+      const depositAmount = parseUnits("0.5", 18);
       const expectedShares = await vault.convertToShares(depositAmount);
 
       await expect(vault.connect(user1).deposit(depositAmount, user1.address))
@@ -348,7 +344,7 @@ describe("Vault.sol – Core", function () {
       const { vault, mockUSDC, user1 } = await loadFixture(deployVaultFixture);
 
       // Dépôt initial de 1000 USDC
-      const depositAmount = ethers.parseUnits("1000", 6);
+      const depositAmount = ethers.parseUnits("1000", 18);
       await mockUSDC.connect(user1).approve(vault, depositAmount);
       await vault.connect(user1).deposit(depositAmount, user1.address);
 
@@ -388,7 +384,7 @@ describe("Vault.sol – Core", function () {
       expect(await vault.exitFeeBps()).to.eq(500);
 
       // Dépôt initial de 1000 USDC
-      const depositAmount = ethers.parseUnits("1000", 6);
+      const depositAmount = ethers.parseUnits("1000", 18);
       await mockUSDC.connect(user1).approve(vault, depositAmount);
       await vault.connect(user1).deposit(depositAmount, user1.address);
 

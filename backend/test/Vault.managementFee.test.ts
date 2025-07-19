@@ -15,7 +15,7 @@ describe("Vault – Gestion des frais de gestion", function () {
       await vault.connect(owner).setFees(50, 100); // 1% management fee
 
       // Dépôt initial pour avoir des shares
-      const depositAmount = ethers.parseUnits("1000", 6);
+      const depositAmount = ethers.parseUnits("1000", 18);
       await mockUSDC
         .connect(user1)
         .approve(await vault.getAddress(), depositAmount);
@@ -65,7 +65,7 @@ describe("Vault – Gestion des frais de gestion", function () {
       await vault.connect(owner).setFees(50, 100); // 1% management fee
 
       // Dépôt de 1000 USDC
-      const depositAmount = ethers.parseUnits("1000", 6);
+      const depositAmount = ethers.parseUnits("1000", 18);
       await mockUSDC
         .connect(user1)
         .approve(await vault.getAddress(), depositAmount);
@@ -87,7 +87,7 @@ describe("Vault – Gestion des frais de gestion", function () {
       await vault.connect(owner).setFees(50, 0);
 
       // Dépôt de 1000 USDC
-      const depositAmount = ethers.parseUnits("1000", 6);
+      const depositAmount = ethers.parseUnits("1000", 18);
       await mockUSDC
         .connect(user1)
         .approve(await vault.getAddress(), depositAmount);
@@ -119,7 +119,7 @@ describe("Vault – Gestion des frais de gestion", function () {
       await vault.connect(owner).setFees(50, 100);
 
       // Dépôt de 1000 USDC
-      const depositAmount = ethers.parseUnits("1000", 6);
+      const depositAmount = ethers.parseUnits("1000", 18);
       await mockUSDC
         .connect(user1)
         .approve(await vault.getAddress(), depositAmount);
@@ -147,7 +147,7 @@ describe("Vault – Gestion des frais de gestion", function () {
       await vault.connect(owner).setFees(50, 100);
 
       // Dépôt de 1000 USDC
-      const depositAmount = ethers.parseUnits("1000", 6);
+      const depositAmount = ethers.parseUnits("1000", 18);
       await mockUSDC
         .connect(user1)
         .approve(await vault.getAddress(), depositAmount);
@@ -168,7 +168,7 @@ describe("Vault – Gestion des frais de gestion", function () {
       await vault.connect(owner).setFees(50, 0);
 
       // Dépôt de 1000 USDC
-      const depositAmount = ethers.parseUnits("1000", 6);
+      const depositAmount = ethers.parseUnits("1000", 18);
       await mockUSDC
         .connect(user1)
         .approve(await vault.getAddress(), depositAmount);
@@ -211,7 +211,7 @@ describe("Vault – Gestion des frais de gestion", function () {
       await vault.connect(owner).setFees(50, 100);
 
       // Dépôt initial pour avoir des shares
-      const depositAmount = ethers.parseUnits("1000", 6);
+      const depositAmount = ethers.parseUnits("1000", 18);
       await mockUSDC
         .connect(user1)
         .approve(await vault.getAddress(), depositAmount);

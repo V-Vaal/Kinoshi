@@ -1,4 +1,5 @@
 import { useVaultUserEvents, VaultUserEvent } from './useVaultUserEvents'
+import { formatUnits } from 'viem'
 
 export type UserHistoryItem = {
   type: 'Dépôt' | 'Retrait' | 'Frais de sortie' | 'Autre'
@@ -8,7 +9,7 @@ export type UserHistoryItem = {
   details?: string
 }
 
-export function useUserHistory(userAddress?: string, decimals = 6) {
+export function useUserHistory(userAddress?: string, decimals = 18) {
   const { events, loading, error } = useVaultUserEvents(userAddress)
 
   const history: UserHistoryItem[] = events.map((evt) => {
@@ -23,14 +24,14 @@ export function useUserHistory(userAddress?: string, decimals = 6) {
         break
       case 'exitFee':
         type = 'Frais de sortie'
-        details = `Frais appliqué : ${Number(evt.fee ?? 0) / 10 ** decimals} USDC`
+        details = `Frais appliqué : ${parseFloat(formatUnits(evt.fee ?? 0n, decimals))} USDC`
         break
       default:
         type = 'Autre'
     }
     return {
       type,
-      amount: Number(evt.amount) / 10 ** decimals,
+      amount: parseFloat(formatUnits(evt.amount, decimals)),
       date: new Date(evt.timestamp * 1000),
       txHash: evt.txHash,
       details,

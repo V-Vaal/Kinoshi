@@ -16,7 +16,7 @@ async function main() {
   console.log("\n📦 Déploiement des tokens mockés...");
 
   const MockUSDC = await ethers.getContractFactory("MockUSDC");
-  const mockUSDC = await MockUSDC.deploy("Mock USDC", "mUSDC", 6);
+  const mockUSDC = await MockUSDC.deploy("Mock USDC", "mUSDC");
   await mockUSDC.waitForDeployment();
   console.log("✅ MockUSDC déployé à:", await mockUSDC.getAddress());
 
@@ -50,9 +50,9 @@ async function main() {
   // 3. Enregistrement des tokens dans le registry
   console.log("\n🔗 Enregistrement des tokens dans le registry...");
 
-  await tokenRegistry.registerToken(await mockUSDC.getAddress(), "mUSDC", 6);
+  await tokenRegistry.registerToken(await mockUSDC.getAddress(), "mUSDC", 18);
   await tokenRegistry.registerToken(await mockGold.getAddress(), "mGOLD", 18);
-  await tokenRegistry.registerToken(await mockBTC.getAddress(), "mBTC", 8);
+  await tokenRegistry.registerToken(await mockBTC.getAddress(), "mBTC", 18);
   await tokenRegistry.registerToken(await mockBonds.getAddress(), "mBONDS", 18);
   await tokenRegistry.registerToken(
     await mockEquity.getAddress(),
@@ -148,7 +148,7 @@ async function main() {
   // 9. Mint de tokens pour le déploiement
   console.log("\n💰 Mint de tokens pour le déploiement...");
 
-  const mintAmount = parseUnits("1000000", 6); // 1M USDC
+  const mintAmount = parseUnits("1000000", 18); // 1M USDC
   await mockUSDC.mint(deployer.address, mintAmount);
   console.log("✅ 1M MockUSDC mintés pour le déploiement");
 
@@ -156,11 +156,11 @@ async function main() {
   console.log("\n🚀 Bootstrap du Vault...");
 
   // Approbation pour le bootstrap
-  const bootstrapAmount = parseUnits("200", 6); // 200 USDC
+  const bootstrapAmount = parseUnits("1", 18); // 1 USDC (standard ERC4626)
   await mockUSDC.approve(await vault.getAddress(), bootstrapAmount);
 
   await vault.bootstrapVault();
-  console.log("✅ Vault bootstrappé avec 200 USDC");
+  console.log("✅ Vault bootstrappé avec 1 USDC");
 
   // 11. Affichage des adresses finales
   console.log("\n🎯 Adresses des contrats déployés:");

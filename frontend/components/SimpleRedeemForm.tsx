@@ -62,11 +62,19 @@ const SimpleRedeemForm: React.FC = () => {
       })
       setAmount('')
       setTxHash(undefined)
+      // Rafraîchir les données du Vault
       window.dispatchEvent(new Event('vault-refresh'))
     }
     if (isTxError) {
-      setContractError('Erreur lors de la confirmation de la transaction.')
+      const errorMessage = 'Erreur lors de la confirmation de la transaction.'
+      setContractError(errorMessage)
       setTxHash(undefined)
+
+      // Toast d'erreur
+      toast.error('❌ Échec du retrait', {
+        description: errorMessage,
+        duration: 5000,
+      })
     }
   }, [isTxSuccess, isTxError])
 
@@ -80,7 +88,7 @@ const SimpleRedeemForm: React.FC = () => {
 
       try {
         const maxAmount = await previewRedeem(userShares)
-        const maxFormatted = formatUnits(maxAmount, assetDecimals || 6)
+        const maxFormatted = formatUnits(maxAmount, assetDecimals || 18)
         setMaxWithdrawable(maxFormatted)
       } catch (error) {
         console.error('Erreur calcul max retirable:', error)
@@ -114,7 +122,7 @@ const SimpleRedeemForm: React.FC = () => {
 
     try {
       // Convertir le montant USDC en parts
-      const amountBigInt = parseUnits(amount, assetDecimals || 6)
+      const amountBigInt = parseUnits(amount, assetDecimals || 18)
       const shares = await readContract(wagmiConfig, {
         abi: vaultAbi,
         address: vaultAddress as `0x${string}`,
@@ -147,6 +155,12 @@ const SimpleRedeemForm: React.FC = () => {
         }
       }
       setContractError(message)
+
+      // Toast d'erreur
+      toast.error('❌ Erreur de retrait', {
+        description: message,
+        duration: 5000,
+      })
     } finally {
       setIsLoading(false)
     }

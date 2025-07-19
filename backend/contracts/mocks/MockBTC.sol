@@ -7,7 +7,7 @@ contract MockBTC is ERC20 {
     uint8 private immutable _customDecimals;
 
     constructor() ERC20("Mock Bitcoin", "mBTC") {
-        _customDecimals = 8; // 8 décimales pour BTC
+        _customDecimals = 18; // 18 décimales pour BTC (standardisé)
     }
 
     function decimals() public view override returns (uint8) {

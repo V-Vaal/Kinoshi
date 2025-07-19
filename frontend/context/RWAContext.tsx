@@ -9,31 +9,28 @@ import React, {
   ReactNode,
 } from 'react'
 import { useAccount } from 'wagmi'
-import { readContract } from 'wagmi/actions'
-import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
-import { vaultAddress, mockOracleAddress } from '@/constants'
-import mockPriceFeedAbi from '@/abis/MockPriceFeed.abi.json'
+import { formatUnits } from 'viem'
 import { useTokenRegistry } from './TokenRegistryContext'
 import { useVault } from './VaultContext'
-import { useUserHistory } from '@/utils/useUserHistory'
-import { formatUnits } from 'viem'
 
+// Types pour les balances RWA
 export interface RWABalance {
   symbol: string
   tokenAddress: string
   balance: bigint
   decimals: number
   price: bigint
-  value: number
-  percent: number
+  value: number // Valeur en USDC
+  percent: number // Pourcentage d'allocation
 }
 
+// Types pour le contexte
 export interface RWAContextType {
   rwaBalances: RWABalance[]
   totalValue: number
   isLoading: boolean
   error: string | null
-  fetchRWABalances: () => Promise<void>
+  refreshRWABalances: () => Promise<void>
 }
 
 const RWAContext = createContext<RWAContextType | undefined>(undefined)
@@ -47,8 +44,7 @@ export const useRWA = () => {
 export const RWAProvider = ({ children }: { children: ReactNode }) => {
   const { address, isConnected } = useAccount()
   const { allocations, registeredTokens } = useTokenRegistry()
-  const { totalAssets } = useVault()
-  const { history } = useUserHistory(address, 6)
+  const { userPortfolioValue } = useVault()
   const [rwaBalances, setRwaBalances] = useState<RWABalance[]>([])
   const [totalValue, setTotalValue] = useState<number>(0)
   const [isLoading, setIsLoading] = useState(false)
@@ -59,7 +55,8 @@ export const RWAProvider = ({ children }: { children: ReactNode }) => {
       !isConnected ||
       !address ||
       !allocations.length ||
-      !registeredTokens.length
+      !registeredTokens.length ||
+      !userPortfolioValue
     ) {
       setRwaBalances([])
       setTotalValue(0)
@@ -70,16 +67,15 @@ export const RWAProvider = ({ children }: { children: ReactNode }) => {
     setError(null)
 
     try {
-      // Récupérer le total investi depuis l'historique
-      const totalInvested =
-        history
-          .filter((item) => item.type === 'Dépôt')
-          .reduce((sum, item) => sum + item.amount, 0) || 100 // Fallback à 100 si pas d'historique
+      // Convertir userPortfolioValue en nombre (userPortfolioValue est en 18 décimales)
+      const portfolioValueNumber = parseFloat(
+        formatUnits(userPortfolioValue, 18)
+      )
 
-      // Calculer la répartition basée sur les weights d'allocation
-      const allocationPromises = allocations
+      // Calculer la répartition basée sur les allocations
+      const rwaExposures = allocations
         .filter((a) => a.active)
-        .map(async (allocation) => {
+        .map((allocation) => {
           const tokenInfo = registeredTokens.find(
             (t) =>
               t.tokenAddress.toLowerCase() === allocation.token.toLowerCase()
@@ -92,61 +88,23 @@ export const RWAProvider = ({ children }: { children: ReactNode }) => {
           const weightPercent =
             parseFloat(formatUnits(allocation.weight, 18)) * 100
 
-          // Calculer la valeur allouée
-          const allocatedValue = totalInvested * (weightPercent / 100)
-
-          // Récupérer le prix via l'oracle
-          const [price] = (await readContract(wagmiConfig, {
-            abi: mockPriceFeedAbi.abi,
-            address: mockOracleAddress as `0x${string}`,
-            functionName: 'getPrice',
-            args: [allocation.token],
-          })) as [bigint, bigint]
-
-          // Calculer la valeur actuelle (prix oracle en 18 decimals)
-          const priceInUSD = parseFloat(formatUnits(price, 18))
-          const currentValue = allocatedValue * (priceInUSD / 100) // Prix normalisé à 100
+          // Calculer la valeur allouée selon la part utilisateur
+          const allocatedValue = portfolioValueNumber * (weightPercent / 100)
 
           return {
             symbol: tokenInfo.symbol,
             tokenAddress: allocation.token,
-            allocatedValue,
-            currentValue,
-            weightPercent,
-            price: priceInUSD,
+            balance: BigInt(0), // Pas utilisé dans cette logique
+            decimals: 18, // Pas utilisé dans cette logique
+            price: BigInt(0), // Pas utilisé dans cette logique
+            value: allocatedValue,
+            percent: Math.round(weightPercent * 100) / 100, // Pourcentage d'allocation
           }
         })
+        .filter(Boolean) as RWABalance[]
 
-      const results = (await Promise.all(allocationPromises)).filter(
-        Boolean
-      ) as {
-        symbol: string
-        tokenAddress: string
-        allocatedValue: number
-        currentValue: number
-        weightPercent: number
-        price: number
-      }[]
-
-      // Calculer le total de la valeur actuelle
-      const totalCurrentValue = results.reduce(
-        (sum, item) => sum + item.currentValue,
-        0
-      )
-
-      // Créer les balances finales avec les pourcentages d'allocation
-      const finalBalances = results.map((item) => ({
-        symbol: item.symbol,
-        tokenAddress: item.tokenAddress,
-        balance: BigInt(0), // Pas utilisé dans cette logique
-        decimals: 18, // Pas utilisé dans cette logique
-        price: BigInt(0), // Pas utilisé dans cette logique
-        value: item.currentValue,
-        percent: Math.round(item.weightPercent * 100) / 100, // Pourcentage d'allocation
-      }))
-
-      setRwaBalances(finalBalances)
-      setTotalValue(totalCurrentValue)
+      setRwaBalances(rwaExposures)
+      setTotalValue(portfolioValueNumber)
     } catch (err) {
       console.error('Erreur lors du calcul des allocations RWA:', err)
       setError('Erreur lors du calcul des valeurs RWA')
@@ -155,7 +113,7 @@ export const RWAProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false)
     }
-  }, [isConnected, address, allocations, registeredTokens])
+  }, [isConnected, address, allocations, registeredTokens, userPortfolioValue])
 
   // Rafraîchir à la connexion et changement d'adresse
   useEffect(() => {
@@ -167,19 +125,24 @@ export const RWAProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [isConnected, address, fetchRWABalances])
 
-  // Écouter les événements de refresh
+  // Rafraîchir quand les allocations ou le portefeuille changent
   useEffect(() => {
-    const handler = () => fetchRWABalances()
-    window.addEventListener('vault-refresh', handler)
-    return () => window.removeEventListener('vault-refresh', handler)
-  }, [fetchRWABalances])
+    if (
+      isConnected &&
+      address &&
+      allocations.length > 0 &&
+      userPortfolioValue
+    ) {
+      fetchRWABalances()
+    }
+  }, [allocations, userPortfolioValue, fetchRWABalances])
 
   const value: RWAContextType = {
     rwaBalances,
     totalValue,
     isLoading,
     error,
-    fetchRWABalances,
+    refreshRWABalances: fetchRWABalances,
   }
 
   return <RWAContext.Provider value={value}>{children}</RWAContext.Provider>

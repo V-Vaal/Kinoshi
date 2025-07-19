@@ -4,15 +4,15 @@
 // 💡 Généré automatiquement par le script de déploiement
 // 📝 Ne pas utiliser en prod/testnet sans adaptation
 
-export const vaultAddress = '0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE'
-export const tokenRegistryAddress = '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707'
+export const vaultAddress = '0x4826533B4897376654Bb4d4AD88B7faFD0C98528'
+export const tokenRegistryAddress = '0x67d269191c92Caf3cD7723F116c85e6E9bf55933'
 
 export const mockTokenAddresses = {
-  mUSDC: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
-  mGOLD: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
-  mBTC: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
-  mBONDS: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9',
-  mEQUITY: '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9',
+  mUSDC: '0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f',
+  mGOLD: '0x4A679253410272dd5232B3Ff7cF5dbB88f295319',
+  mBTC: '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F',
+  mBONDS: '0x09635F643e140090A9A8Dcd712eD6285858ceBef',
+  mEQUITY: '0xc5a5C42992dECbae36851359345FE25997F5C42d',
 }
 
-export const mockOracleAddress = '0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e'
+export const mockOracleAddress = '0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8'

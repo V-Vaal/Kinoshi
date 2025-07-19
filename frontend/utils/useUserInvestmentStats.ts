@@ -1,7 +1,7 @@
 import { useVaultUserEvents } from './useVaultUserEvents'
 import { useVault } from '@/context/VaultContext'
 
-export function useUserInvestmentStats(userAddress?: string, decimals = 6) {
+export function useUserInvestmentStats(userAddress?: string, decimals = 18) {
   const { events, loading, error } = useVaultUserEvents(userAddress)
   const { userShares, totalAssets } = useVault()
 
