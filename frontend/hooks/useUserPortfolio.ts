@@ -1,17 +1,17 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { formatUnits } from 'viem'
+import { readContract } from 'wagmi/actions'
+import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
+import { vaultAddress, mockOracleAddress } from '@/constants'
 import { useUserHistory } from '@/utils/useUserHistory'
 import { useTokenRegistry } from '@/context/TokenRegistryContext'
 import { mockTokenAddresses } from '@/constants'
+import mockPriceFeedAbiJson from '@/abis/MockPriceFeed.abi.json'
 
-// Prix oracle mockés (temporaire pour éviter les boucles)
-const MOCK_ORACLE_PRICES: Record<string, number> = {
-  [mockTokenAddresses.mGOLD]: 2000, // GOLD
-  [mockTokenAddresses.mBTC]: 45000, // BTC
-  [mockTokenAddresses.mBONDS]: 100, // BONDS
-  [mockTokenAddresses.mEQUITY]: 50, // EQUITY
-}
+// ABI du Mock Price Feed
+const mockPriceFeedAbi = (mockPriceFeedAbiJson.abi ??
+  mockPriceFeedAbiJson) as readonly unknown[]
 
 // Symboles des tokens
 const TOKEN_SYMBOLS: Record<string, string> = {
@@ -37,12 +37,147 @@ export interface UserPortfolio {
   currentValue: number // Valeur actuelle totale
   performance: number // Performance globale %
   breakdown: PortfolioToken[]
+  fallback?: boolean // Indique si on utilise le fallback on-chain
+  warning?: string // Message d'alerte si désynchronisation
 }
 
 export const useUserPortfolio = (): UserPortfolio => {
   const { address } = useAccount()
   const { history } = useUserHistory(address, 18)
   const { allocations } = useTokenRegistry()
+  const [userShares, setUserShares] = useState<bigint | null>(null)
+
+  // Récupérer les shares de l'utilisateur pour le fallback
+  useEffect(() => {
+    const fetchUserShares = async () => {
+      if (!address) {
+        setUserShares(null)
+        return
+      }
+      try {
+        const shares = await readContract(wagmiConfig, {
+          abi: [
+            {
+              inputs: [{ name: 'account', type: 'address' }],
+              name: 'balanceOf',
+              outputs: [{ name: '', type: 'uint256' }],
+              stateMutability: 'view',
+              type: 'function',
+            },
+          ],
+          address: vaultAddress as `0x${string}`,
+          functionName: 'balanceOf',
+          args: [address],
+        })
+
+        setUserShares(shares as bigint)
+
+        console.log('🔍 User Shares Debug:', {
+          shares: shares.toString(),
+        })
+      } catch (error) {
+        console.log('🔍 User Shares Error:', error)
+        setUserShares(null)
+      }
+    }
+    fetchUserShares()
+  }, [address])
+
+  const [fallbackValue, setFallbackValue] = useState<number | null>(null)
+  const [oraclePrices, setOraclePrices] = useState<Record<string, number>>({})
+
+  // Calculer le fallback si nécessaire
+  useEffect(() => {
+    const calculateFallback = async () => {
+      if (userShares && userShares > 0n) {
+        try {
+          const fallbackAssets = await readContract(wagmiConfig, {
+            abi: [
+              {
+                inputs: [{ name: 'shares', type: 'uint256' }],
+                name: 'convertToAssets',
+                outputs: [{ name: '', type: 'uint256' }],
+                stateMutability: 'view',
+                type: 'function',
+              },
+            ],
+            address: vaultAddress as `0x${string}`,
+            functionName: 'convertToAssets',
+            args: [userShares],
+          })
+
+          const value = parseFloat(formatUnits(fallbackAssets as bigint, 18))
+          setFallbackValue(value)
+
+          console.log('🔍 Fallback Debug:', {
+            shares: userShares.toString(),
+            fallbackAssets: fallbackAssets.toString(),
+            fallbackValue: value,
+          })
+        } catch (error) {
+          console.log('🔍 Fallback Error:', error)
+          setFallbackValue(null)
+        }
+      } else {
+        setFallbackValue(null)
+      }
+    }
+
+    calculateFallback()
+  }, [userShares])
+
+  // Récupérer les prix oracle on-chain
+  useEffect(() => {
+    const fetchOraclePrices = async () => {
+      if (!allocations.length) return
+
+      try {
+        const prices: Record<string, number> = {}
+
+        for (const allocation of allocations.filter((a) => a.active)) {
+          try {
+            const result = await readContract(wagmiConfig, {
+              abi: mockPriceFeedAbi,
+              address: mockOracleAddress as `0x${string}`,
+              functionName: 'getPrice',
+              args: [allocation.token],
+            })
+
+            const [price, decimals] = result as [bigint, number]
+            const priceFormatted = parseFloat(formatUnits(price, decimals))
+            prices[allocation.token] = priceFormatted
+
+            console.log('🔍 Oracle Price Debug:', {
+              token: allocation.token,
+              price: price.toString(),
+              decimals,
+              priceFormatted,
+            })
+          } catch (error) {
+            console.log(
+              '🔍 Oracle Price Error for token:',
+              allocation.token,
+              error
+            )
+            // Fallback aux prix par défaut si erreur
+            const defaultPrices: Record<string, number> = {
+              [mockTokenAddresses.mGOLD]: 2000,
+              [mockTokenAddresses.mBTC]: 45000,
+              [mockTokenAddresses.mBONDS]: 100,
+              [mockTokenAddresses.mEQUITY]: 50,
+            }
+            prices[allocation.token] = defaultPrices[allocation.token] || 1
+          }
+        }
+
+        setOraclePrices(prices)
+      } catch (error) {
+        console.log('🔍 Oracle Prices Error:', error)
+      }
+    }
+
+    fetchOraclePrices()
+  }, [allocations])
 
   return useMemo(() => {
     // Debug: afficher l'historique complet
@@ -80,20 +215,8 @@ export const useUserPortfolio = (): UserPortfolio => {
       0
     )
 
-    // Ne compter les frais de sortie que s'ils sont liés à un retrait
-    // (même transaction ou bloc proche)
-    const withdrawalTxHashes = new Set(withdrawals.map((item) => item.txHash))
-    const relatedExitFees = exitFees.filter((item) =>
-      withdrawalTxHashes.has(item.txHash)
-    )
-
-    // Pour les frais de sortie, utiliser le montant du fee, pas le montant total
-    const totalExitFees = relatedExitFees.reduce((sum, item) => {
-      // Extraire le montant du fee depuis les détails
-      const feeMatch = item.details?.match(/Frais appliqué : ([\d.]+) USDC/)
-      const feeAmount = feeMatch ? parseFloat(feeMatch[1]) : 0
-      return sum + feeAmount
-    }, 0)
+    // Compter tous les frais de sortie (ils sont maintenant correctement calculés)
+    const totalExitFees = exitFees.reduce((sum, item) => sum + item.amount, 0)
 
     // Montant total retiré = montant net reçu + frais de sortie liés
     const totalWithdrawals = totalWithdrawalsNet + totalExitFees
@@ -107,8 +230,36 @@ export const useUserPortfolio = (): UserPortfolio => {
       amountInvested,
     })
 
-    if (amountInvested <= 0 || !allocations.length) {
-      console.log('🔍 Portfolio Debug - Returning empty portfolio')
+    // Vérification croisée : si portfolio vide mais shares > 0
+    if (amountInvested <= 0) {
+      console.log('🔍 Portfolio Debug - Empty portfolio from events')
+
+      // Cas de désynchronisation détecté
+      if (fallbackValue && fallbackValue > 0) {
+        console.log(
+          '🔍 Portfolio Debug - Desync detected, using on-chain fallback'
+        )
+        return {
+          amountInvested: fallbackValue,
+          currentValue: fallbackValue,
+          performance: 0,
+          breakdown: [],
+          fallback: true,
+          warning:
+            'Désynchronisation détectée : certains montants sont estimés à partir de la blockchain.',
+        }
+      }
+
+      // Vraiment vide
+      return {
+        amountInvested: 0,
+        currentValue: 0,
+        performance: 0,
+        breakdown: [],
+      }
+    }
+
+    if (!allocations.length) {
       return {
         amountInvested: 0,
         currentValue: 0,
@@ -126,7 +277,7 @@ export const useUserPortfolio = (): UserPortfolio => {
       .forEach((allocation) => {
         const allocationPercent =
           parseFloat(formatUnits(allocation.weight, 18)) * 100
-        const oraclePrice = MOCK_ORACLE_PRICES[allocation.token] || 0
+        const oraclePrice = oraclePrices[allocation.token] || 0
         const amountInvestedInToken = amountInvested * (allocationPercent / 100)
         const tokenQuantity = amountInvestedInToken / oraclePrice
         const currentValue = tokenQuantity * oraclePrice
@@ -160,5 +311,5 @@ export const useUserPortfolio = (): UserPortfolio => {
       performance,
       breakdown,
     }
-  }, [history, allocations])
+  }, [history, allocations, oraclePrices])
 }

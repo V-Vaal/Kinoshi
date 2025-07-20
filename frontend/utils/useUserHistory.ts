@@ -43,8 +43,8 @@ export function useUserHistory(userAddress?: string, decimals = 18) {
         break
       case 'exitFee':
         type = 'Frais de sortie'
-        amount = parseFloat(formatUnits(evt.amount, 18))
-        details = `Frais appliqué : ${parseFloat(formatUnits(evt.fee ?? 0n, decimals))} USDC`
+        amount = parseFloat(formatUnits(evt.fee ?? 0n, decimals)) // Utiliser le fee, pas le montant total
+        details = `Frais appliqué : ${amount} USDC`
         break
       default:
         type = 'Autre'

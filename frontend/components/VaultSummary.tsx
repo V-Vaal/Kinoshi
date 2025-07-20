@@ -10,6 +10,8 @@ import {
   CardHeader,
   CardTitle,
   Badge,
+  Alert,
+  AlertDescription,
 } from '@/components/ui'
 import { useEffect, useState } from 'react'
 import { readContract } from 'wagmi/actions'
@@ -33,7 +35,7 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
   const { address } = useAccount()
   const { refetchHistory } = useUserHistory(address, 18)
   const { refreshUserData } = useVault()
-  const { amountInvested, currentValue } = useUserPortfolio()
+  const { amountInvested, currentValue, warning } = useUserPortfolio()
 
   const [userBalance, setUserBalance] = useState<bigint | null>(null)
   const [pendingDeposits, setPendingDeposits] = useState<number>(0)
@@ -166,6 +168,13 @@ const VaultSummary: React.FC<VaultSummaryProps> = ({ className }) => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Alerte de désynchronisation */}
+        {warning && (
+          <Alert>
+            <AlertDescription>{warning}</AlertDescription>
+          </Alert>
+        )}
+
         {/* Solde USDC */}
         <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
           <div className="flex items-center gap-3">

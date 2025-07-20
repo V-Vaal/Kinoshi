@@ -46,6 +46,12 @@ const SimpleRedeemForm: React.FC = () => {
   const { decimals, assetDecimals } = useVault()
   const { currentValue: maxWithdrawable } = useUserPortfolio()
 
+  // Le montant maximum retirable reste le même (les frais sont prélevés sur le montant demandé)
+  const maxWithdrawableAmount =
+    typeof maxWithdrawable === 'number' && !isNaN(maxWithdrawable)
+      ? maxWithdrawable
+      : 0
+
   const {
     isLoading: isTxLoading,
     isSuccess: isTxSuccess,
@@ -114,7 +120,7 @@ const SimpleRedeemForm: React.FC = () => {
       return
     }
 
-    if (amountFloat > maxWithdrawable) {
+    if (maxWithdrawableAmount > 0 && amountFloat > maxWithdrawableAmount) {
       setContractError('Le montant dépasse votre solde disponible.')
       return
     }
@@ -169,8 +175,8 @@ const SimpleRedeemForm: React.FC = () => {
   }
 
   const handleMaxWithdraw = () => {
-    if (maxWithdrawable > 0) {
-      setAmount(maxWithdrawable.toFixed(2))
+    if (maxWithdrawableAmount > 0 && !isNaN(maxWithdrawableAmount)) {
+      setAmount(maxWithdrawableAmount.toFixed(2))
     }
   }
 
@@ -178,7 +184,7 @@ const SimpleRedeemForm: React.FC = () => {
     !isConnected ||
     !amount ||
     parseFloat(amount) < MINIMUM_WITHDRAWAL ||
-    parseFloat(amount) > maxWithdrawable ||
+    (maxWithdrawableAmount > 0 && parseFloat(amount) > maxWithdrawableAmount) ||
     isLoading ||
     isTxLoading
 
@@ -206,7 +212,7 @@ const SimpleRedeemForm: React.FC = () => {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             min={MINIMUM_WITHDRAWAL}
-            max={maxWithdrawable}
+            max={maxWithdrawableAmount > 0 ? maxWithdrawableAmount : undefined}
             step="0.01"
             disabled={isLoading || isTxLoading}
           />
@@ -218,7 +224,7 @@ const SimpleRedeemForm: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={handleMaxWithdraw}
-              disabled={maxWithdrawable === 0}
+              disabled={maxWithdrawableAmount === 0}
             >
               Max
             </Button>
@@ -230,9 +236,9 @@ const SimpleRedeemForm: React.FC = () => {
           <div className="text-sm">
             <span className="text-gray-600">Solde disponible : </span>
             <span className="font-semibold text-blue-900">
-              {maxWithdrawable === 0
+              {maxWithdrawableAmount === 0
                 ? '...'
-                : `${maxWithdrawable.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`}
+                : `${maxWithdrawableAmount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`}
             </span>
           </div>
         </div>

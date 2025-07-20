@@ -37,9 +37,52 @@ const SimpleDepositForm: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [contractError, setContractError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined)
+  const [userBalance, setUserBalance] = useState<bigint | null>(null)
 
   const { isConnected, address: userAddress } = useAccount()
   const { assetDecimals, refreshUserData } = useVault()
+
+  // Récupérer le solde USDC de l'utilisateur
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (!userAddress) {
+        setUserBalance(null)
+        return
+      }
+
+      try {
+        const balance = await readContract(wagmiConfig, {
+          abi: [
+            {
+              inputs: [{ name: 'account', type: 'address' }],
+              name: 'balanceOf',
+              outputs: [{ name: '', type: 'uint256' }],
+              stateMutability: 'view',
+              type: 'function',
+            },
+          ],
+          address: mockTokenAddresses.mUSDC as `0x${string}`,
+          functionName: 'balanceOf',
+          args: [userAddress],
+        })
+        setUserBalance(balance as bigint)
+      } catch (error) {
+        console.log('🔍 Balance Error:', error)
+        setUserBalance(null)
+      }
+    }
+
+    fetchBalance()
+
+    // Écouter les événements de refresh
+    const handler = () => fetchBalance()
+    window.addEventListener('vault-refresh', handler)
+    window.addEventListener('user-data-refresh', handler)
+    return () => {
+      window.removeEventListener('vault-refresh', handler)
+      window.removeEventListener('user-data-refresh', handler)
+    }
+  }, [userAddress])
 
   const {
     isLoading: isTxLoading,
@@ -99,6 +142,20 @@ const SimpleDepositForm: React.FC = () => {
     const amountFloat = parseFloat(amount)
     if (amountFloat < 50) {
       setContractError('Le montant minimum de dépôt est de 50 USDC.')
+      return
+    }
+
+    // Vérifier le solde USDC
+    if (userBalance === null) {
+      setContractError(
+        'Impossible de vérifier votre solde USDC. Veuillez réessayer.'
+      )
+      return
+    }
+
+    const amountBigInt = parseUnits(amount, assetDecimals)
+    if (userBalance < amountBigInt) {
+      setContractError('Solde USDC insuffisant pour effectuer ce dépôt.')
       return
     }
 

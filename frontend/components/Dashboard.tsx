@@ -12,9 +12,9 @@ import {
   KinoshiBadge,
   Progress,
 } from '@/components/ui'
-import { RefreshCw, Users, Coins, Shield } from 'lucide-react'
+import { RefreshCw, Coins, Shield } from 'lucide-react'
 const Dashboard: React.FC = () => {
-  const { totalAssets, userShares, decimals, fetchVaultData } = useVault()
+  const { totalAssets, decimals, fetchVaultData } = useVault()
 
   // Fonction pour formater les valeurs bigint en string lisible
   const formatValue = (
@@ -96,28 +96,6 @@ const Dashboard: React.FC = () => {
               {formatValue(totalAssets, decimals)}
             </div>
             <Progress value={100} className="h-2" />
-          </KinoshiCardContent>
-        </KinoshiCard>
-
-        <KinoshiCard variant="default">
-          <KinoshiCardContent className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-[var(--kinoshi-gold)]/20 rounded-lg">
-                <Users className="w-5 h-5 text-[var(--kinoshi-text)]" />
-              </div>
-              <div>
-                <h3 className="font-serif font-extrabold text-[var(--kinoshi-accent)]">
-                  Vos parts
-                </h3>
-                <p className="text-sm text-[var(--kinoshi-text)]/90 font-sans font-medium">
-                  Parts détenues
-                </p>
-              </div>
-            </div>
-            <div className="text-3xl font-serif font-extrabold text-[var(--kinoshi-text)] mb-2">
-              {formatValue(userShares, decimals)}
-            </div>
-            <Progress value={75} className="h-2" />
           </KinoshiCardContent>
         </KinoshiCard>
       </div>
