@@ -92,7 +92,7 @@ export function useVaultRoles(): VaultRoles {
 
   useEffect(() => {
     fetchRoles()
-  }, [fetchRoles])
+  }, [address, isConnected])
 
   return {
     ...data,

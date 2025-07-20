@@ -36,9 +36,7 @@ const MintMockUSDC: React.FC = () => {
           args: [address],
         })
         setUserBalance(balance as bigint)
-        console.log('💰 User balance:', formatUnits(balance as bigint, 18))
-      } catch (error) {
-        console.error('❌ Error fetching balance:', error)
+      } catch {
         setUserBalance(null)
       }
     }
@@ -54,32 +52,27 @@ const MintMockUSDC: React.FC = () => {
   const handleMint = async () => {
     setLoading(true)
     try {
-      console.log('🔄 Minting USDC...')
       const abi = (mockUSDCAbiJson.abi ?? mockUSDCAbiJson) as Abi
-      
-      const hash = await writeContract(wagmiConfig, {
+
+      await writeContract(wagmiConfig, {
         abi,
         address: mockTokenAddresses.mUSDC as `0x${string}`,
         functionName: 'mint',
         args: [address, MINT_AMOUNT],
       })
-      
-      console.log('✅ Mint transaction hash:', hash)
+
       toast.success('1000 USDC ajoutés à votre portefeuille !')
-      
+
       // Attendre la confirmation de la transaction
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+
       // Rafraîchir les données utilisateur
       await refreshUserData()
-      
+
       // Dispatcher les événements de refresh
       window.dispatchEvent(new Event('vault-refresh'))
       window.dispatchEvent(new Event('user-data-refresh'))
-      
-      console.log('✅ Mint completed successfully')
     } catch (e) {
-      console.error('❌ Mint error:', e)
       toast.error('Erreur lors du mint : ' + (e as Error).message)
     } finally {
       setLoading(false)
@@ -92,7 +85,10 @@ const MintMockUSDC: React.FC = () => {
     <div className="flex flex-col items-center my-6">
       <div className="text-center mb-4">
         <p className="text-sm text-gray-600 mb-2">
-          Solde actuel : {userBalance === null ? '...' : `${formatUnits(userBalance, 18)} USDC`}
+          Solde actuel :{' '}
+          {userBalance === null
+            ? '...'
+            : `${formatUnits(userBalance, 18)} USDC`}
         </p>
       </div>
       <KinoshiButton
@@ -101,11 +97,11 @@ const MintMockUSDC: React.FC = () => {
         variant="primary"
         size="lg"
       >
-        {loading 
-          ? 'Mint en cours...' 
+        {loading
+          ? 'Mint en cours...'
           : hasEnough
-          ? 'Vous avez déjà assez d\'USDC'
-          : 'Obtenir 1000 USDC (test)'}
+            ? "Vous avez déjà assez d'USDC"
+            : 'Obtenir 1000 USDC (test)'}
       </KinoshiButton>
     </div>
   )

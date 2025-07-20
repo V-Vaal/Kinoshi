@@ -119,7 +119,6 @@ export const TokenRegistryProvider = ({
       setRegisteredTokens(tokens)
       setAllocations(vaultAllocations)
     } catch (err) {
-      console.error('Erreur lors de la récupération des tokens:', err)
       setRegisteredTokens([])
       setAllocations([])
     } finally {
@@ -136,14 +135,17 @@ export const TokenRegistryProvider = ({
       setRegisteredTokens([])
       setAllocations([])
     }
-  }, [isConnected, address, fetchTokenData])
+  }, [isConnected, address])
 
-  const value: TokenRegistryContextType = {
-    registeredTokens,
-    allocations,
-    isLoading,
-    fetchTokenData,
-  }
+  const value: TokenRegistryContextType = React.useMemo(
+    () => ({
+      registeredTokens,
+      allocations,
+      isLoading,
+      fetchTokenData,
+    }),
+    [registeredTokens, allocations, isLoading, fetchTokenData]
+  )
 
   return (
     <TokenRegistryContext.Provider value={value}>

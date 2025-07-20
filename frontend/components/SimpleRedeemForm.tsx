@@ -1,13 +1,14 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { parseUnits, formatUnits } from 'viem'
+import { parseUnits } from 'viem'
 import { useAccount } from 'wagmi'
 import { writeContract, readContract } from 'wagmi/actions'
 import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
 import vaultAbiJson from '@/abis/Vault.abi.json'
 import { vaultAddress } from '@/constants'
 import { useVault } from '@/context/VaultContext'
+import { useUserPortfolio } from '@/hooks/useUserPortfolio'
 import {
   Card,
   CardContent,
@@ -39,10 +40,11 @@ const SimpleRedeemForm: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [contractError, setContractError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined)
-  const [maxWithdrawable, setMaxWithdrawable] = useState<string>('0')
+  const [exitFeeBps, setExitFeeBps] = useState<number | null>(null)
 
   const { isConnected, address } = useAccount()
-  const { userShares, decimals, assetDecimals, previewRedeem } = useVault()
+  const { decimals, assetDecimals } = useVault()
+  const { currentValue: maxWithdrawable } = useUserPortfolio()
 
   const {
     isLoading: isTxLoading,
@@ -78,26 +80,26 @@ const SimpleRedeemForm: React.FC = () => {
     }
   }, [isTxSuccess, isTxError])
 
-  // Calculer le montant maximum retirable
+  // Récupérer les frais de sortie
   useEffect(() => {
-    const calculateMaxWithdrawable = async () => {
-      if (!userShares || !decimals || !previewRedeem) {
-        setMaxWithdrawable('0')
-        return
-      }
-
+    const fetchExitFee = async () => {
       try {
-        const maxAmount = await previewRedeem(userShares)
-        const maxFormatted = formatUnits(maxAmount, assetDecimals || 18)
-        setMaxWithdrawable(maxFormatted)
+        const bps = await readContract(wagmiConfig, {
+          abi: vaultAbi,
+          address: vaultAddress as `0x${string}`,
+          functionName: 'exitFeeBps',
+        })
+        setExitFeeBps(Number(bps))
       } catch (error) {
-        console.error('Erreur calcul max retirable:', error)
-        setMaxWithdrawable('0')
+        console.error('Erreur récupération frais de sortie:', error)
+        setExitFeeBps(null)
       }
     }
 
-    calculateMaxWithdrawable()
-  }, [userShares, decimals, previewRedeem, assetDecimals])
+    if (isConnected) {
+      fetchExitFee()
+    }
+  }, [isConnected])
 
   const handleRedeem = async () => {
     if (!amount || !decimals || !address) {
@@ -112,7 +114,7 @@ const SimpleRedeemForm: React.FC = () => {
       return
     }
 
-    if (amountFloat > parseFloat(maxWithdrawable)) {
+    if (amountFloat > maxWithdrawable) {
       setContractError('Le montant dépasse votre solde disponible.')
       return
     }
@@ -167,8 +169,8 @@ const SimpleRedeemForm: React.FC = () => {
   }
 
   const handleMaxWithdraw = () => {
-    if (maxWithdrawable !== '0') {
-      setAmount(maxWithdrawable)
+    if (maxWithdrawable > 0) {
+      setAmount(maxWithdrawable.toFixed(2))
     }
   }
 
@@ -176,7 +178,7 @@ const SimpleRedeemForm: React.FC = () => {
     !isConnected ||
     !amount ||
     parseFloat(amount) < MINIMUM_WITHDRAWAL ||
-    parseFloat(amount) > parseFloat(maxWithdrawable) ||
+    parseFloat(amount) > maxWithdrawable ||
     isLoading ||
     isTxLoading
 
@@ -216,7 +218,7 @@ const SimpleRedeemForm: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={handleMaxWithdraw}
-              disabled={maxWithdrawable === '0'}
+              disabled={maxWithdrawable === 0}
             >
               Max
             </Button>
@@ -228,12 +230,58 @@ const SimpleRedeemForm: React.FC = () => {
           <div className="text-sm">
             <span className="text-gray-600">Solde disponible : </span>
             <span className="font-semibold text-blue-900">
-              {maxWithdrawable === '0'
+              {maxWithdrawable === 0
                 ? '...'
-                : `${parseFloat(maxWithdrawable).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`}
+                : `${maxWithdrawable.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`}
             </span>
           </div>
         </div>
+
+        {amount && parseFloat(amount) > 0 && exitFeeBps !== null && (
+          <div className="space-y-2 p-3 bg-gray-50 rounded-lg">
+            <div className="text-sm font-medium text-gray-700">
+              Détails du retrait :
+            </div>
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Montant demandé :</span>
+                <span className="font-medium">
+                  {parseFloat(amount).toLocaleString('fr-FR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}{' '}
+                  USDC
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Frais de sortie :</span>
+                <span className="font-medium text-red-600">
+                  -
+                  {((parseFloat(amount) * exitFeeBps) / 10000).toLocaleString(
+                    'fr-FR',
+                    { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                  )}{' '}
+                  USDC ({(exitFeeBps / 100).toFixed(2)}%)
+                </span>
+              </div>
+              <div className="flex justify-between border-t pt-1">
+                <span className="text-gray-700 font-medium">
+                  Montant net reçu :
+                </span>
+                <span className="font-bold text-green-600">
+                  {(
+                    parseFloat(amount) -
+                    (parseFloat(amount) * exitFeeBps) / 10000
+                  ).toLocaleString('fr-FR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}{' '}
+                  USDC
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
         <Button
           onClick={handleRedeem}

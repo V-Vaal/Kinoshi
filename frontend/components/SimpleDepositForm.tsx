@@ -64,17 +64,16 @@ const SimpleDepositForm: React.FC = () => {
       window.dispatchEvent(new Event('deposit-success'))
 
       // Refresh immédiat pour mettre à jour les données
-      setTimeout(async () => {
+      ;(async () => {
         try {
           await refreshUserData()
-          // Rafraîchir les données du Vault
+          // Rafraîchir les données du Vault et de l'historique utilisateur
           window.dispatchEvent(new Event('vault-refresh'))
           window.dispatchEvent(new Event('user-data-refresh'))
-          console.log('✅ Deposit success - Data refreshed')
-        } catch (error) {
-          console.error('❌ Error refreshing data after deposit:', error)
+        } catch {
+          // Erreur silencieuse
         }
-      }, 1000) // Petit délai pour laisser le temps à la blockchain
+      })()
     }
     if (isTxError) {
       const errorMessage = 'Erreur lors de la confirmation de la transaction.'
@@ -114,11 +113,8 @@ const SimpleDepositForm: React.FC = () => {
     )
 
     try {
-      console.log('🔄 Starting deposit...', { amount, assetDecimals })
-      
       // Utiliser 18 décimales pour le parseUnits (assetDecimals devrait être 18)
       const amountBigInt = parseUnits(amount, assetDecimals)
-      console.log('💰 Amount in wei:', amountBigInt.toString())
 
       // Vérifier l'allowance
       const allowance = await readContract(wagmiConfig, {
@@ -139,12 +135,9 @@ const SimpleDepositForm: React.FC = () => {
         args: [userAddress, vaultAddress],
       })
 
-      console.log('🔐 Current allowance:', allowance.toString())
-
       if (allowance < amountBigInt) {
-        console.log('🔐 Approving tokens...')
         // Approuver d'abord
-        const approveHash = await writeContract(wagmiConfig, {
+        await writeContract(wagmiConfig, {
           abi: [
             {
               inputs: [
@@ -161,13 +154,11 @@ const SimpleDepositForm: React.FC = () => {
           functionName: 'approve',
           args: [vaultAddress, amountBigInt],
         })
-        
-        console.log('✅ Approval hash:', approveHash)
+
         // Attendre la confirmation de l'approval
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        await new Promise((resolve) => setTimeout(resolve, 2000))
       }
 
-      console.log('💸 Executing deposit...')
       // Effectuer le dépôt
       const hash = await writeContract(wagmiConfig, {
         abi: vaultAbi,
@@ -176,10 +167,8 @@ const SimpleDepositForm: React.FC = () => {
         args: [amountBigInt, userAddress],
       })
 
-      console.log('✅ Deposit hash:', hash)
       setTxHash(hash as `0x${string}`)
     } catch (error) {
-      console.error('❌ Deposit error:', error)
       let message = 'Erreur lors du dépôt. Veuillez réessayer.'
       if (
         typeof error === 'object' &&
