@@ -9,6 +9,7 @@ import vaultAbiJson from '@/abis/Vault.abi.json'
 import { vaultAddress } from '@/constants'
 import { useVault } from '@/context/VaultContext'
 import { useUserPortfolio } from '@/hooks/useUserPortfolio'
+import { useRWASnapshot } from '@/hooks/useRWASnapshot'
 import {
   Card,
   CardContent,
@@ -45,6 +46,7 @@ const SimpleRedeemForm: React.FC = () => {
   const { isConnected, address } = useAccount()
   const { decimals, assetDecimals } = useVault()
   const { currentValue: maxWithdrawable } = useUserPortfolio()
+  const { updateSnapshotOnWithdrawal } = useRWASnapshot()
 
   // Le montant maximum retirable reste le même (les frais sont prélevés sur le montant demandé)
   const maxWithdrawableAmount =
@@ -63,6 +65,12 @@ const SimpleRedeemForm: React.FC = () => {
 
   useEffect(() => {
     if (isTxSuccess) {
+      // Mettre à jour le snapshot RWA après un retrait réussi
+      const withdrawalAmount = parseFloat(amount)
+      if (withdrawalAmount > 0) {
+        updateSnapshotOnWithdrawal(withdrawalAmount)
+      }
+
       toast.success('✅ Retrait effectué avec succès !', {
         description:
           'Vos fonds ont été convertis en USDC et transférés vers votre wallet.',
@@ -70,8 +78,13 @@ const SimpleRedeemForm: React.FC = () => {
       })
       setAmount('')
       setTxHash(undefined)
-      // Rafraîchir les données du Vault
-      window.dispatchEvent(new Event('vault-refresh'))
+
+      // Refresh immédiat pour mettre à jour les données
+      setTimeout(() => {
+        // Rafraîchir les données du Vault et de l'historique utilisateur
+        window.dispatchEvent(new Event('vault-refresh'))
+        window.dispatchEvent(new Event('user-data-refresh'))
+      }, 2000) // Petit délai pour laisser le temps à la blockchain
     }
     if (isTxError) {
       const errorMessage = 'Erreur lors de la confirmation de la transaction.'
@@ -129,21 +142,40 @@ const SimpleRedeemForm: React.FC = () => {
     setIsLoading(true)
 
     try {
+      // Récupérer les parts de l'utilisateur
+      const userShares = (await readContract(wagmiConfig, {
+        abi: vaultAbi,
+        address: vaultAddress as `0x${string}`,
+        functionName: 'balanceOf',
+        args: [address],
+      })) as bigint
+
+      if (!userShares || userShares === 0n) {
+        setContractError("Vous n'avez pas de parts à retirer.")
+        return
+      }
+
       // Convertir le montant USDC en parts
       const amountBigInt = parseUnits(amount, assetDecimals || 18)
-      const shares = await readContract(wagmiConfig, {
+      const sharesNeeded = (await readContract(wagmiConfig, {
         abi: vaultAbi,
         address: vaultAddress as `0x${string}`,
         functionName: 'convertToShares',
         args: [amountBigInt],
-      })
+      })) as bigint
+
+      // Vérifier que l'utilisateur a assez de parts
+      if (sharesNeeded > userShares) {
+        setContractError("Vous n'avez pas assez de parts pour ce retrait.")
+        return
+      }
 
       // Effectuer le retrait
       const hash = await writeContract(wagmiConfig, {
         abi: vaultAbi,
         address: vaultAddress as `0x${string}`,
         functionName: 'redeem',
-        args: [shares as bigint, address, address],
+        args: [sharesNeeded, address, address],
       })
 
       setTxHash(hash as `0x${string}`)
@@ -179,6 +211,23 @@ const SimpleRedeemForm: React.FC = () => {
       setAmount(maxWithdrawableAmount.toFixed(2))
     }
   }
+
+  // Validation en temps réel pour afficher les erreurs
+  const amountFloat = amount ? parseFloat(amount) : 0
+  const isAmountTooHigh =
+    maxWithdrawableAmount > 0 && amountFloat > maxWithdrawableAmount
+
+  // Afficher l'erreur de solde insuffisant en temps réel
+  useEffect(() => {
+    if (isAmountTooHigh && !contractError) {
+      setContractError('Le montant dépasse votre solde disponible.')
+    } else if (
+      !isAmountTooHigh &&
+      contractError?.includes('solde disponible')
+    ) {
+      setContractError(null)
+    }
+  }, [isAmountTooHigh, contractError])
 
   const isDisabled =
     !isConnected ||

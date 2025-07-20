@@ -145,3 +145,18 @@ export const formatTransactionHash = (
   if (hash.length <= prefix + suffix) return hash
   return `${hash.slice(0, prefix)}...${hash.slice(-suffix)}`
 }
+
+/**
+ * Formate une valeur en USDC avec 2 décimales max
+ */
+export function formatUSDCValue(value: number): string {
+  return value
+    .toLocaleString('fr-FR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      style: 'currency',
+      currency: 'USD',
+      currencyDisplay: 'code',
+    })
+    .replace('USD', 'USDC')
+}

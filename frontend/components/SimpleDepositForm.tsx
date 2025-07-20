@@ -1,13 +1,16 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { parseUnits } from 'viem'
+import { parseUnits, formatUnits } from 'viem'
 import { useAccount } from 'wagmi'
 import { writeContract, readContract } from 'wagmi/actions'
 import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
 import vaultAbiJson from '@/abis/Vault.abi.json'
 import { vaultAddress, mockTokenAddresses } from '@/constants'
 import { useVault } from '@/context/VaultContext'
+import { useTokenRegistry } from '@/context/TokenRegistryContext'
+import { useRWASnapshot } from '@/hooks/useRWASnapshot'
+import { useUserHistory } from '@/utils/useUserHistory'
 import {
   Card,
   CardContent,
@@ -41,6 +44,9 @@ const SimpleDepositForm: React.FC = () => {
 
   const { isConnected, address: userAddress } = useAccount()
   const { assetDecimals, refreshUserData } = useVault()
+  const { allocations } = useTokenRegistry()
+  const { createSnapshot } = useRWASnapshot()
+  const { refetchHistory } = useUserHistory(userAddress, 18)
 
   // Récupérer le solde USDC de l'utilisateur
   useEffect(() => {
@@ -84,6 +90,20 @@ const SimpleDepositForm: React.FC = () => {
     }
   }, [userAddress])
 
+  // Effacer l'erreur si le solde devient suffisant
+  useEffect(() => {
+    if (amount && userBalance && assetDecimals) {
+      const amountBigInt = parseUnits(amount, assetDecimals)
+
+      if (
+        userBalance >= amountBigInt &&
+        contractError?.includes('Solde USDC insuffisant')
+      ) {
+        setContractError(null)
+      }
+    }
+  }, [amount, userBalance, assetDecimals, contractError])
+
   const {
     isLoading: isTxLoading,
     isSuccess: isTxSuccess,
@@ -106,13 +126,79 @@ const SimpleDepositForm: React.FC = () => {
       // Dispatcher l'événement de succès
       window.dispatchEvent(new Event('deposit-success'))
 
+      // Créer le snapshot RWA après un dépôt réussi
+      const savedAmount = parseFloat(amount)
+      if (savedAmount > 0 && allocations.length > 0) {
+        // Récupérer les prix oracle actuels pour créer le snapshot
+        const fetchOraclePrices = async () => {
+          try {
+            const { readContract } = await import('wagmi/actions')
+            const { wagmiConfig } = await import(
+              '@/components/RainbowKitAndWagmiProvider'
+            )
+            const { mockOracleAddress } = await import('@/constants')
+            const mockPriceFeedAbiJson = await import(
+              '@/abis/MockPriceFeed.abi.json'
+            )
+
+            const mockPriceFeedAbi = (mockPriceFeedAbiJson.abi ??
+              mockPriceFeedAbiJson) as readonly unknown[]
+
+            const prices: Record<string, number> = {}
+            for (const allocation of allocations.filter((a) => a.active)) {
+              try {
+                const result = await readContract(wagmiConfig, {
+                  abi: mockPriceFeedAbi,
+                  address: mockOracleAddress as `0x${string}`,
+                  functionName: 'getPrice',
+                  args: [allocation.token],
+                })
+                const [price, decimals] = result as [bigint, number]
+                prices[allocation.token] = parseFloat(
+                  formatUnits(price, decimals)
+                )
+              } catch (error) {
+                console.log(
+                  'Oracle price error for snapshot:',
+                  allocation.token,
+                  error
+                )
+                // Fallback aux prix par défaut
+                const defaultPrices: Record<string, number> = {
+                  [mockTokenAddresses.mGOLD]: 2000,
+                  [mockTokenAddresses.mBTC]: 45000,
+                  [mockTokenAddresses.mBONDS]: 100,
+                  [mockTokenAddresses.mEQUITY]: 50,
+                }
+                prices[allocation.token] = defaultPrices[allocation.token] || 1
+              }
+            }
+
+            // Créer le snapshot avec les prix oracle actuels
+            createSnapshot(savedAmount, allocations, prices)
+          } catch (error) {
+            console.error('Erreur lors de la création du snapshot RWA:', error)
+          }
+        }
+
+        fetchOraclePrices()
+      }
+
       // Refresh immédiat pour mettre à jour les données
       ;(async () => {
         try {
           await refreshUserData()
+          // Refetch immédiat de l'historique pour avoir les nouvelles données
+          await refetchHistory()
+
           // Rafraîchir les données du Vault et de l'historique utilisateur
           window.dispatchEvent(new Event('vault-refresh'))
           window.dispatchEvent(new Event('user-data-refresh'))
+
+          // Forcer un refresh immédiat du portfolio
+          setTimeout(() => {
+            window.dispatchEvent(new Event('portfolio-refresh'))
+          }, 1000) // Petit délai pour laisser le temps au snapshot d'être créé
         } catch {
           // Erreur silencieuse
         }
@@ -154,8 +240,25 @@ const SimpleDepositForm: React.FC = () => {
     }
 
     const amountBigInt = parseUnits(amount, assetDecimals)
+
+    // Debug: afficher les valeurs exactes
+    const userBalanceFormatted = formatUnits(userBalance, assetDecimals)
+    const amountFormatted = formatUnits(amountBigInt, assetDecimals)
+
+    console.log('🔍 Validation solde:', {
+      userBalance: userBalanceFormatted,
+      amount: amountFormatted,
+      userBalanceBigInt: userBalance.toString(),
+      amountBigInt: amountBigInt.toString(),
+      hasEnough: userBalance >= amountBigInt,
+      difference: userBalance - amountBigInt,
+    })
+
+    // Supprimer complètement la marge de sécurité
     if (userBalance < amountBigInt) {
-      setContractError('Solde USDC insuffisant pour effectuer ce dépôt.')
+      setContractError(
+        `Solde USDC insuffisant. Vous avez ${userBalanceFormatted} USDC, il faut ${amountFormatted} USDC.`
+      )
       return
     }
 

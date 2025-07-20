@@ -23,7 +23,8 @@ const Header = () => {
     badge = (
       <Badge
         variant={isAdmin ? 'default' : 'secondary'}
-        className="ml-2 flex items-center gap-1"
+        className={`ml-2 flex items-center gap-1 ${isAdmin ? 'cursor-pointer hover:bg-blue-600 transition-colors' : ''}`}
+        onClick={isAdmin ? () => router.push('/admin') : undefined}
       >
         {isAdmin ? (
           <Shield className="w-3 h-3" />
@@ -70,51 +71,64 @@ const Header = () => {
           />
         </div>
 
-        {/* Navigation centrée avec plus d'espace */}
-        <div className="flex-1 flex justify-center px-4 md:px-16">
-          <div className="grid w-full max-w-2xl grid-cols-2 md:grid-cols-4 h-12 md:h-14 bg-gradient-to-r from-[var(--kinoshi-accent)]/10 to-[var(--kinoshi-accent)]/5 border border-[var(--kinoshi-accent)]/20 rounded-xl p-1 md:p-1.5 gap-1">
-            <button
-              className={`font-serif font-extrabold text-sm md:text-base cursor-pointer transition-all duration-300 rounded-lg ${
-                isActiveTab('portefeuille')
-                  ? 'bg-[var(--kinoshi-accent)]/80 text-white scale-105 shadow-lg'
-                  : 'hover:bg-[var(--kinoshi-accent)]/30 hover:scale-105 text-[var(--kinoshi-text)]'
-              } ${!hasProfile && !isAdmin ? 'opacity-50 pointer-events-none' : ''}`}
-              onClick={() => (window.location.href = '/portefeuille')}
-            >
-              Portefeuille
-            </button>
-            <button
-              className={`font-serif font-extrabold text-sm md:text-base cursor-pointer transition-all duration-300 rounded-lg ${
-                isActiveTab('a-propos')
-                  ? 'bg-[var(--kinoshi-accent)]/80 text-white scale-105 shadow-lg'
-                  : 'hover:bg-[var(--kinoshi-accent)]/30 hover:scale-105 text-[var(--kinoshi-text)]'
-              } ${!hasProfile && !isAdmin ? 'opacity-50 pointer-events-none' : ''}`}
-              onClick={() => (window.location.href = '/a-propos')}
-            >
-              À propos
-            </button>
-            <button
-              className={`font-serif font-extrabold text-sm md:text-base cursor-pointer transition-all duration-300 rounded-lg ${
-                isActiveTab('profil')
-                  ? 'bg-[var(--kinoshi-accent)]/80 text-white scale-105 shadow-lg'
-                  : 'hover:bg-[var(--kinoshi-accent)]/30 hover:scale-105 text-[var(--kinoshi-text)]'
-              }`}
-              onClick={() => (window.location.href = '/profil')}
-            >
-              Profil
-            </button>
-            <button
-              className={`font-serif font-extrabold text-sm md:text-base cursor-pointer transition-all duration-300 rounded-lg ${
-                isActiveTab('investir')
-                  ? 'bg-[var(--kinoshi-accent)]/80 text-white scale-105 shadow-lg'
-                  : 'hover:bg-[var(--kinoshi-accent)]/30 hover:scale-105 text-[var(--kinoshi-text)]'
-              } ${!hasProfile && !isAdmin ? 'opacity-50 pointer-events-none' : ''}`}
-              onClick={() => (window.location.href = '/investir')}
-            >
-              Investir
-            </button>
+        {/* Navigation centrée avec plus d'espace - désactivée pour admin */}
+        {!isAdmin && (
+          <div className="flex-1 flex justify-center px-4 md:px-16">
+            <div className="grid w-full max-w-2xl grid-cols-2 md:grid-cols-4 h-12 md:h-14 bg-gradient-to-r from-[var(--kinoshi-accent)]/10 to-[var(--kinoshi-accent)]/5 border border-[var(--kinoshi-accent)]/20 rounded-xl p-1 md:p-1.5 gap-1">
+              <button
+                className={`font-serif font-extrabold text-sm md:text-base cursor-pointer transition-all duration-300 rounded-lg ${
+                  isActiveTab('portefeuille')
+                    ? 'bg-[var(--kinoshi-accent)]/80 text-white scale-105 shadow-lg'
+                    : 'hover:bg-[var(--kinoshi-accent)]/30 hover:scale-105 text-[var(--kinoshi-text)]'
+                } ${!hasProfile ? 'opacity-50 pointer-events-none' : ''}`}
+                onClick={() => (window.location.href = '/portefeuille')}
+              >
+                Portefeuille
+              </button>
+              <button
+                className={`font-serif font-extrabold text-sm md:text-base cursor-pointer transition-all duration-300 rounded-lg ${
+                  isActiveTab('a-propos')
+                    ? 'bg-[var(--kinoshi-accent)]/80 text-white scale-105 shadow-lg'
+                    : 'hover:bg-[var(--kinoshi-accent)]/30 hover:scale-105 text-[var(--kinoshi-text)]'
+                } ${!hasProfile ? 'opacity-50 pointer-events-none' : ''}`}
+                onClick={() => (window.location.href = '/a-propos')}
+              >
+                À propos
+              </button>
+              <button
+                className={`font-serif font-extrabold text-sm md:text-base cursor-pointer transition-all duration-300 rounded-lg ${
+                  isActiveTab('profil')
+                    ? 'bg-[var(--kinoshi-accent)]/80 text-white scale-105 shadow-lg'
+                    : 'hover:bg-[var(--kinoshi-accent)]/30 hover:scale-105 text-[var(--kinoshi-text)]'
+                }`}
+                onClick={() => (window.location.href = '/profil')}
+              >
+                Profil
+              </button>
+              <button
+                className={`font-serif font-extrabold text-sm md:text-base cursor-pointer transition-all duration-300 rounded-lg ${
+                  isActiveTab('investir')
+                    ? 'bg-[var(--kinoshi-accent)]/80 text-white scale-105 shadow-lg'
+                    : 'hover:bg-[var(--kinoshi-accent)]/30 hover:scale-105 text-[var(--kinoshi-text)]'
+                } ${!hasProfile ? 'opacity-50 pointer-events-none' : ''}`}
+                onClick={() => (window.location.href = '/investir')}
+              >
+                Investir
+              </button>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Message admin si sur page non-admin */}
+        {isAdmin && pathname !== '/admin' && (
+          <div className="flex-1 flex justify-center px-4 md:px-16">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center">
+              <p className="text-blue-800 font-medium">
+                Mode Admin - Accès exclusif au panel d'administration
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* ConnectButton, badge et déconnexion - plus compact */}
         <div className="flex items-center w-full md:w-52 justify-center md:justify-end gap-2 md:gap-3">

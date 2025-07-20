@@ -6,14 +6,14 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Coins, RefreshCw } from 'lucide-react'
 
-import { formatUSDCValue } from '@/utils/rwaCalculations'
+import { formatUSDCValue } from '@/utils/formatting'
 
 // Helper pour formater les valeurs en USDC (remplacé par formatUSDCValue)
 const formatValueAsUSDC = formatUSDCValue
 
 const RWABreakdown: React.FC = () => {
   const { userShares, refreshUserData } = useVault()
-  const { currentValue, breakdown } = useUserPortfolio()
+  const { currentValue, breakdown, isFallback, warning } = useUserPortfolio()
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Fonction de refresh manuel
@@ -58,7 +58,12 @@ const RWABreakdown: React.FC = () => {
 
   // Utiliser le portefeuille utilisateur calculé
   const displayBalances = breakdown || []
-  const displayTotalValue = currentValue || 0
+  // Calculer la somme des valeurs individuelles pour s'assurer de la cohérence
+  const calculatedTotalValue = displayBalances.reduce(
+    (sum, item) => sum + item.currentValue,
+    0
+  )
+  const displayTotalValue = calculatedTotalValue || 0
 
   if (displayBalances.length === 0) {
     return (
@@ -109,6 +114,16 @@ const RWABreakdown: React.FC = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Warning si fallback */}
+        {isFallback && warning && (
+          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-center gap-2">
+              <span className="text-yellow-600">⚠️</span>
+              <span className="text-sm text-yellow-800">{warning}</span>
+            </div>
+          </div>
+        )}
+
         {/* Total de la valeur RWA */}
         <div className="p-4 bg-blue-50 rounded-lg">
           <div className="flex items-center justify-between">
@@ -130,15 +145,23 @@ const RWABreakdown: React.FC = () => {
                   <Badge variant="secondary" className="min-w-[70px]">
                     {item.symbol}
                   </Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {formatValueAsUSDC(item.amountInvested)} investis
-                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-sm text-muted-foreground">
+                      {formatValueAsUSDC(item.amountInvested)} investis
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Prix: {formatValueAsUSDC(item.oraclePrice)}
+                    </span>
+                  </div>
                 </div>
                 <div className="text-right">
                   <div className="font-semibold">
                     {formatValueAsUSDC(item.currentValue)}
                   </div>
                   <div className="text-sm text-muted-foreground">
+                    {item.tokenQuantity.toFixed(6)} {item.symbol}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
                     {item.allocationPercent.toFixed(0)}% stratégie
                   </div>
                 </div>

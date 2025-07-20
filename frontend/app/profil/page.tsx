@@ -13,6 +13,7 @@ import {
 import MintMockUSDC from '@/components/MintMockUSDC'
 import StrategySelector from '@/components/StrategySelector'
 import AuthGuard from '@/components/AuthGuard'
+import AdminRedirect from '@/components/AdminRedirect'
 import { useUser } from '@/context/UserContext'
 
 interface RiskProfile {
@@ -77,28 +78,30 @@ const ProfilePage: React.FC = () => {
   if (showForm) {
     return (
       <AuthGuard requireProfile={false}>
-        <div className="container mx-auto px-4 py-8">
-          <KinoshiCard variant="outlined" className="max-w-2xl mx-auto">
-            <KinoshiCardHeader>
-              <KinoshiCardTitle>
-                Complétez votre profil de risque
-              </KinoshiCardTitle>
-            </KinoshiCardHeader>
-            <KinoshiCardContent className="space-y-6">
-              {/* Texte explicatif ajouté */}
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-blue-800 font-medium leading-relaxed">
-                  Merci de remplir ce formulaire. Il nous permet de définir une
-                  stratégie d'investissement correspondant à votre profil de
-                  risque. Une fois complété, vous pourrez accéder à votre
-                  portefeuille et investir.
-                </p>
-              </div>
+        <AdminRedirect>
+          <div className="container mx-auto px-4 py-8">
+            <KinoshiCard variant="outlined" className="max-w-2xl mx-auto">
+              <KinoshiCardHeader>
+                <KinoshiCardTitle>
+                  Complétez votre profil de risque
+                </KinoshiCardTitle>
+              </KinoshiCardHeader>
+              <KinoshiCardContent className="space-y-6">
+                {/* Texte explicatif ajouté */}
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-blue-800 font-medium leading-relaxed">
+                    Merci de remplir ce formulaire. Il nous permet de définir
+                    une stratégie d'investissement correspondant à votre profil
+                    de risque. Une fois complété, vous pourrez accéder à votre
+                    portefeuille et investir.
+                  </p>
+                </div>
 
-              <RiskProfileForm />
-            </KinoshiCardContent>
-          </KinoshiCard>
-        </div>
+                <RiskProfileForm />
+              </KinoshiCardContent>
+            </KinoshiCard>
+          </div>
+        </AdminRedirect>
       </AuthGuard>
     )
   }
@@ -106,67 +109,69 @@ const ProfilePage: React.FC = () => {
   // Sinon on affiche le résumé du profil
   return (
     <AuthGuard requireProfile={false}>
-      <div className="container mx-auto px-4 py-8">
-        <KinoshiCard variant="outlined" className="max-w-2xl mx-auto">
-          <KinoshiCardHeader>
-            <KinoshiCardTitle>Votre profil de risque</KinoshiCardTitle>
-          </KinoshiCardHeader>
-          <KinoshiCardContent className="space-y-6">
-            <div className="text-center">
-              <div className="text-3xl font-serif font-extrabold text-[var(--kinoshi-primary)] mb-2">
-                🎯 Vous êtes un profil {riskProfile?.profile}
-              </div>
-              <div className="text-lg font-mono font-semibold text-[var(--kinoshi-text)] mb-4">
-                Score : {riskProfile?.score}/18
-              </div>
-              <p className="text-[var(--kinoshi-text)]/90 font-sans font-medium leading-relaxed">
-                {riskProfile ? getProfileMessage(riskProfile.profile) : ''}
-              </p>
-
-              {/* Texte explicatif ajouté */}
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-sm text-blue-800 font-medium">
-                  💡 Changer votre profil changera votre stratégie
-                  d'investissement.
+      <AdminRedirect>
+        <div className="container mx-auto px-4 py-8">
+          <KinoshiCard variant="outlined" className="max-w-2xl mx-auto">
+            <KinoshiCardHeader>
+              <KinoshiCardTitle>Votre profil de risque</KinoshiCardTitle>
+            </KinoshiCardHeader>
+            <KinoshiCardContent className="space-y-6">
+              <div className="text-center">
+                <div className="text-3xl font-serif font-extrabold text-[var(--kinoshi-primary)] mb-2">
+                  🎯 Vous êtes un profil {riskProfile?.profile}
+                </div>
+                <div className="text-lg font-mono font-semibold text-[var(--kinoshi-text)] mb-4">
+                  Score : {riskProfile?.score}/18
+                </div>
+                <p className="text-[var(--kinoshi-text)]/90 font-sans font-medium leading-relaxed">
+                  {riskProfile ? getProfileMessage(riskProfile.profile) : ''}
                 </p>
-              </div>
-            </div>
 
-            <div className="pt-4 border-t border-[var(--kinoshi-border)]/30">
-              <div className="flex justify-between items-center text-sm text-[var(--kinoshi-text)]/70">
-                <span>
-                  Complété le{' '}
-                  {riskProfile
-                    ? new Date(riskProfile.completedAt).toLocaleDateString(
-                        'fr-FR'
-                      )
-                    : ''}
-                </span>
+                {/* Texte explicatif ajouté */}
+                <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-800 font-medium">
+                    💡 Changer votre profil changera votre stratégie
+                    d'investissement.
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-[var(--kinoshi-border)]/30">
+                <div className="flex justify-between items-center text-sm text-[var(--kinoshi-text)]/70">
+                  <span>
+                    Complété le{' '}
+                    {riskProfile
+                      ? new Date(riskProfile.completedAt).toLocaleDateString(
+                          'fr-FR'
+                        )
+                      : ''}
+                  </span>
+                  <KinoshiButton
+                    variant="outline"
+                    onClick={handleModifyProfile}
+                    size="sm"
+                  >
+                    Modifier mon profil
+                  </KinoshiButton>
+                </div>
+              </div>
+              <MintMockUSDC />
+              <StrategySelector />
+
+              {/* Bouton ajouté */}
+              <div className="pt-4 border-t border-[var(--kinoshi-border)]/30">
                 <KinoshiButton
-                  variant="outline"
-                  onClick={handleModifyProfile}
-                  size="sm"
+                  onClick={() => (window.location.href = '/portefeuille')}
+                  className="w-full"
+                  size="lg"
                 >
-                  Modifier mon profil
+                  Accéder à mon portefeuille Kinoshi
                 </KinoshiButton>
               </div>
-            </div>
-            <MintMockUSDC />
-            <StrategySelector />
-
-            {/* Bouton ajouté */}
-            <div className="pt-4 border-t border-[var(--kinoshi-border)]/30">
-              <KinoshiButton
-                onClick={() => (window.location.href = '/portefeuille')}
-                className="w-full"
-                size="lg"
-              >
-                Accéder à mon portefeuille Kinoshi
-              </KinoshiButton>
-            </div>
-          </KinoshiCardContent>
-        </KinoshiCard>
-      </div>
+            </KinoshiCardContent>
+          </KinoshiCard>
+        </div>
+      </AdminRedirect>
     </AuthGuard>
   )
 }

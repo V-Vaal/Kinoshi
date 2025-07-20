@@ -22,7 +22,7 @@ import mockUSDCAbiJson from '@/abis/MockUSDC.abi.json'
 import type { Abi } from 'viem'
 import { Wallet, TrendingUp, Target, DollarSign, RefreshCw } from 'lucide-react'
 import { formatUSDC, formatPercentage } from '@/utils/formatting'
-import { formatUSDCValue } from '@/utils/rwaCalculations'
+import { formatUSDCValue } from '@/utils/formatting'
 
 interface VaultSummaryProps {
   className?: string
