@@ -12,12 +12,12 @@ import { hardhat, sepolia, mainnet } from 'wagmi/chains'
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
 
 // Sélection dynamique de la chaîne selon l'env
-const chainEnv = process.env.NEXT_PUBLIC_CHAIN_ENV || 'localhost'
+const chainEnv = process.env.NEXT_PUBLIC_CHAIN_ENV || 'sepolia'
 
 const chainsByEnv = {
- localhost: [hardhat] as const,
- // sepolia: [sepolia] as const,
- //ainnet: [mainnet] as const,
+  localhost: [hardhat] as const,
+  sepolia: [sepolia] as const,
+  Mainnet: [mainnet] as const,
 }
 
 const activeChains =
@@ -26,7 +26,7 @@ const activeChains =
 // Configuration wagmi + RainbowKit centralisée
 const config = getDefaultConfig({
   appName: 'Kinoshi',
-  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo',
+  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '80a20fd75ed562869992eb8b7ae5161d',
   chains: activeChains,
   ssr: true, // Support SSR pour Next.js
   wallets: [

@@ -103,7 +103,7 @@ async function main() {
   await mockPriceFeed.setPrice(await mockUSDC.getAddress(), usdcPrice, 18);
 
   console.log("✅ Prix configurés (simplifiés pour le test):");
-  console.log("  - BTC: $118800");
+  console.log("  - BTC: $1.00");
   console.log("  - Equity: $1.00");
   console.log("  - Gold: $1.00");
   console.log("  - Bonds: $1.00");
@@ -232,7 +232,6 @@ async function main() {
   const constantsContent = `// constants/index.ts
 
   // 🔐 Adresses des contrats déployés localement (Hardhat)
-  // 💡 Généré automatiquement par le script de déploiement
   // 📝 Ne pas utiliser en prod/testnet sans adaptation
 
   export const vaultAddress = "${await vault.getAddress()}";

@@ -21,19 +21,19 @@ export const wagmiConfig = createConfig({
     [sepolia.id]: http(
       process.env.RPC_URL_SEPOLIA ||
         process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA ||
-        'https://sepolia.infura.io/v3/your-project-id'
+        'https://eth-sepolia.g.alchemy.com/v2/spa0bQSwKrxHU_Z1HR3AO'
     ),
   },
   connectors: [
     injected(),
     walletConnect({
       projectId:
-        process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'your-project-id',
+        process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '80a20fd75ed562869992eb8b7ae5161d',
       metadata: {
-        name: 'Kinoshi - Sepolia',
-        description: 'Application de gestion de portefeuille sur Sepolia',
-        url: 'https://kinoshi.app',
-        icons: ['https://kinoshi.app/icon.png'],
+        name: 'Kinoshi',
+        description: 'Investissez en toute simplicité',
+        url: 'https://kinoshiio.vercel.app',
+        icons: ['https://kinoshiio.vercel.app/icon.png'],
       },
     }),
   ],
