@@ -136,4 +136,42 @@ describe("TokenRegistry", function () {
 
     expect(await tokenRegistry.getTokenCount()).to.equal(2);
   });
+
+  it("ne permet pas à un non-owner d’enregistrer un token", async function () {
+    const { tokenRegistry, owner } = await deployTokenRegistryFixture();
+    const [, user] = await ethers.getSigners();
+    const mockToken = await (
+      await ethers.getContractFactory("MockUSDC")
+    ).deploy("Mock USDC", "mUSDC");
+    const address = await mockToken.getAddress();
+    await expect(
+      tokenRegistry.connect(user).registerToken(address, "mUSDC", 18)
+    ).to.be.revertedWithCustomError(
+      tokenRegistry,
+      "OwnableUnauthorizedAccount"
+    );
+  });
+
+  it("émet un événement TokenRegistered à l’enregistrement", async function () {
+    const { tokenRegistry } = await deployTokenRegistryFixture();
+    const mockToken = await (
+      await ethers.getContractFactory("MockUSDC")
+    ).deploy("Mock USDC", "mUSDC");
+    const address = await mockToken.getAddress();
+    await expect(tokenRegistry.registerToken(address, "mUSDC", 18))
+      .to.emit(tokenRegistry, "TokenRegistered")
+      .withArgs(address, "mUSDC", 18);
+  });
+
+  it("émet un événement TokenUnregistered à la désinscription", async function () {
+    const { tokenRegistry } = await deployTokenRegistryFixture();
+    const mockToken = await (
+      await ethers.getContractFactory("MockUSDC")
+    ).deploy("Mock USDC", "mUSDC");
+    const address = await mockToken.getAddress();
+    await tokenRegistry.registerToken(address, "mUSDC", 18);
+    await expect(tokenRegistry.unregisterToken(address))
+      .to.emit(tokenRegistry, "TokenUnregistered")
+      .withArgs(address);
+  });
 });

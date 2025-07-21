@@ -15,7 +15,7 @@ describe("Vault.sol – Core", function () {
 
     it("a le bon nom ERC20", async function () {
       const { vault } = await loadFixture(deployVaultFixture);
-      expect(await vault.name()).to.equal("Kinoshi Vault Share");
+      expect(await vault.name()).to.equal("Kinoshi Vault Medium");
     });
   });
 

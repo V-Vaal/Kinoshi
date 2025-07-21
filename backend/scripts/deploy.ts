@@ -3,6 +3,24 @@ import { parseUnits } from "ethers";
 import { writeFileSync } from "fs";
 import { join } from "path";
 
+/**
+ * Script de déploiement complet pour l'écosystème Kinoshi
+ *
+ * Ce script déploie et configure tous les contrats nécessaires pour le vault RWA :
+ * 1. Tokens mockés (USDC, Gold, BTC, Bonds, Equity)
+ * 2. TokenRegistry pour la gestion des tokens autorisés
+ * 3. MockPriceFeed pour les prix des actifs
+ * 4. Vault principal avec stratégie d'allocation
+ *
+ * Le script configure également :
+ * - Les allocations d'actifs (stratégie équilibrée)
+ * - Les frais de sortie et de gestion
+ * - Les prix réalistes pour les tests
+ * - Le bootstrap du vault
+ *
+ * À la fin, il génère automatiquement le fichier constants/index.ts
+ * pour le frontend avec toutes les adresses déployées.
+ */
 async function main() {
   const [deployer, treasury] = await ethers.getSigners();
   console.log("🚀 Déploiement Kinoshi avec le compte:", deployer.address);
@@ -162,7 +180,7 @@ async function main() {
   await vault.bootstrapVault();
   console.log("✅ Vault bootstrappé avec 1 USDC");
 
-  // 10 bis. Dépôt utilisateur post-bootstrap pour activer l’allocation RWA
+  // 10 bis. Dépôt utilisateur post-bootstrap pour activer l'allocation RWA
   console.log("\n🧪 Dépôt utilisateur pour allocation RWA...");
 
   const depositAmount = parseUnits("1", 18); // 1 USDC pour test allocation

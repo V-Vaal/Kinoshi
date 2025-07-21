@@ -1,6 +1,18 @@
 import { ethers } from "hardhat";
 import { parseUnits } from "ethers";
 
+/**
+ * Fixture principale pour les tests du vault
+ *
+ * Cette fonction déploie et configure un environnement de test complet avec :
+ * - TokenRegistry pour la gestion des tokens
+ * - MockUSDC comme token de base (18 décimales)
+ * - Deux tokens RWA simulés pour les tests d'allocation
+ * - MockPriceFeed avec des prix prédéfinis
+ * - Vault configuré avec une allocation 100% RWA1
+ *
+ * @returns Objet contenant tous les contrats et signers nécessaires aux tests
+ */
 export async function deployVaultFixture() {
   const [owner, user1, user2, treasury] = await ethers.getSigners();
 
@@ -87,6 +99,16 @@ export async function deployVaultFixture() {
     allocations,
   };
 }
+
+/**
+ * Fixture pour les tests avec vault vide (sans allocation)
+ *
+ * Cette fonction déploie un environnement de test similaire à deployVaultFixture
+ * mais sans configuration d'allocation, permettant de tester les cas où
+ * le vault n'a pas encore d'actifs alloués.
+ *
+ * @returns Objet contenant tous les contrats et signers nécessaires aux tests
+ */
 export async function deployVaultFixtureEmpty() {
   const [owner, user1, user2, treasury] = await ethers.getSigners();
 
@@ -100,8 +122,10 @@ export async function deployVaultFixtureEmpty() {
   const mockUSDC = await MockUSDC.deploy("Mock USDC", "mUSDC");
   await mockUSDC.waitForDeployment();
 
-  // Mint 10 USDC au owner pour le bootstrap
-  await mockUSDC.mint(owner.address, parseUnits("10", 18));
+  // Mint pour les utilisateurs
+  await mockUSDC.mint(owner.address, parseUnits("10000", 18));
+  await mockUSDC.mint(user1.address, parseUnits("10000", 18));
+  await mockUSDC.mint(user2.address, parseUnits("10000", 18));
 
   // Enregistrement du MockUSDC dans le TokenRegistry
   await tokenRegistry.registerToken(await mockUSDC.getAddress(), "mUSDC", 18);
@@ -111,15 +135,15 @@ export async function deployVaultFixtureEmpty() {
   const mockPriceFeed = await MockPriceFeed.deploy(owner.address);
   await mockPriceFeed.waitForDeployment();
 
-  // Configuration des prix par défaut (en 18 décimales)
-  const usdcPrice = parseUnits("1", 18); // 1 USDC = 1 USDC
+  // Configuration du prix USDC
+  const usdcPrice = parseUnits("1", 18);
   await mockPriceFeed.setPrice(await mockUSDC.getAddress(), usdcPrice, 18);
 
-  // Déploiement du Vault SANS ALLOCATION
+  // Déploiement du Vault sans allocation
   const Vault = await ethers.getContractFactory("Vault");
   const vault = await Vault.deploy(
     await mockUSDC.getAddress(),
-    "Équilibrée",
+    "Vide",
     treasury.address,
     tokenRegistry.getAddress(),
     mockPriceFeed.getAddress()
