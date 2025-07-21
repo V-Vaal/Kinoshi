@@ -43,11 +43,11 @@ const MintMockUSDC: React.FC = () => {
     fetchBalance()
   }, [address, loading])
 
-  // Nouvelle logique : afficher si connecté ET (admin OU a un profil de risque)
+  // ✅ MockUSDC n'a pas de contrôle d'accès, tout utilisateur connecté peut mint
   const hasRiskProfile =
     typeof window !== 'undefined' &&
     localStorage.getItem('kinoshi-risk-profile') !== null
-  if (isVisitor || !address || (!isAdmin && !hasRiskProfile)) return null
+  if (isVisitor || !address) return null
 
   const handleMint = async () => {
     setLoading(true)

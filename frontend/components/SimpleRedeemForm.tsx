@@ -9,7 +9,7 @@ import vaultAbiJson from '@/abis/Vault.abi.json'
 import { vaultAddress } from '@/constants'
 import { useVault } from '@/context/VaultContext'
 import { useUserPortfolio } from '@/hooks/useUserPortfolio'
-import { useRWASnapshot } from '@/hooks/useRWASnapshot'
+// import { useRWASnapshot } from '@/hooks/useRWASnapshot' // 🚫 PHASE 1 - Supprimé
 import {
   Card,
   CardContent,
@@ -46,7 +46,7 @@ const SimpleRedeemForm: React.FC = () => {
   const { isConnected, address } = useAccount()
   const { decimals, assetDecimals } = useVault()
   const { currentValue: maxWithdrawable } = useUserPortfolio()
-  const { updateSnapshotOnWithdrawal } = useRWASnapshot()
+  // const { updateSnapshotOnWithdrawal } = useRWASnapshot() // 🚫 PHASE 1 - Supprimé
 
   // Le montant maximum retirable reste le même (les frais sont prélevés sur le montant demandé)
   const maxWithdrawableAmount =
@@ -65,11 +65,11 @@ const SimpleRedeemForm: React.FC = () => {
 
   useEffect(() => {
     if (isTxSuccess) {
-      // Mettre à jour le snapshot RWA après un retrait réussi
-      const withdrawalAmount = parseFloat(amount)
-      if (withdrawalAmount > 0) {
-        updateSnapshotOnWithdrawal(withdrawalAmount)
-      }
+      // ✅ PHASE 1 - Plus besoin de mettre à jour le snapshot
+      // La logique ERC-4626 convertToAssets(userShares) gère tout automatiquement
+      console.log(
+        '✅ Retrait réussi - convertToAssets(userShares) sera mis à jour automatiquement'
+      )
 
       toast.success('✅ Retrait effectué avec succès !', {
         description:

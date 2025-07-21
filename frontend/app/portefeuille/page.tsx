@@ -8,6 +8,7 @@ import Link from 'next/link'
 import VaultSummary from '@/components/VaultSummary'
 import RWABreakdown from '@/components/RWABreakdown'
 import Historique from '@/components/Historique'
+import DebugPortfolio from '@/components/DebugPortfolio'
 
 const PortefeuillePage: React.FC = () => {
   return (
@@ -36,6 +37,11 @@ const PortefeuillePage: React.FC = () => {
               {/* Historique des transactions */}
               <Historique />
             </div>
+          </div>
+
+          {/* 🧪 PHASE 4 - Debug temporaire */}
+          <div className="mt-8">
+            <DebugPortfolio />
           </div>
         </div>
       </AdminRedirect>

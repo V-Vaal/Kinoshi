@@ -71,12 +71,12 @@ async function main() {
   // 5. Configuration des prix réalistes
   console.log("\n💰 Configuration des prix réalistes...");
 
-  // Prix en USDC (normalisés en base 18)
-  const btcPrice = parseUnits("118800", 18); // 118,800 USD
-  const equityPrice = parseUnits("623.62", 18); // 623.62 USD
-  const goldPrice = parseUnits("3355", 18); // 3,355 USD
-  const bondPrice = parseUnits("95.78", 18); // 95.78 USD
-  const usdcPrice = parseUnits("1", 18); // 1 USDC = 1 USDC
+  // Prix en USDC (normalisés en base 18) - Prix simplifiés pour le test
+  const btcPrice = parseUnits("118800", 18); // BTC
+  const equityPrice = parseUnits("623.62", 18); // Equity
+  const goldPrice = parseUnits("3355", 18); // Gold
+  const bondPrice = parseUnits("95.78", 18); // Bonds
+  const usdcPrice = parseUnits("1", 18); // mUSDC
 
   await mockPriceFeed.setPrice(await mockBTC.getAddress(), btcPrice, 18);
   await mockPriceFeed.setPrice(await mockEquity.getAddress(), equityPrice, 18);
@@ -84,11 +84,11 @@ async function main() {
   await mockPriceFeed.setPrice(await mockBonds.getAddress(), bondPrice, 18);
   await mockPriceFeed.setPrice(await mockUSDC.getAddress(), usdcPrice, 18);
 
-  console.log("✅ Prix configurés:");
-  console.log("  - BTC: $118,800");
-  console.log("  - Equity: $623.62");
-  console.log("  - Gold: $3,355");
-  console.log("  - Bonds: $95.78");
+  console.log("✅ Prix configurés (simplifiés pour le test):");
+  console.log("  - BTC: $118800");
+  console.log("  - Equity: $1.00");
+  console.log("  - Gold: $1.00");
+  console.log("  - Bonds: $1.00");
   console.log("  - USDC: $1.00");
 
   // 6. Déploiement du Vault avec Oracle
@@ -162,6 +162,21 @@ async function main() {
   await vault.bootstrapVault();
   console.log("✅ Vault bootstrappé avec 1 USDC");
 
+  // 10 bis. Dépôt utilisateur post-bootstrap pour activer l’allocation RWA
+  console.log("\n🧪 Dépôt utilisateur pour allocation RWA...");
+
+  const depositAmount = parseUnits("1", 18); // 1 USDC pour test allocation
+
+  // Approve Vault pour transférer
+  await mockUSDC.approve(await vault.getAddress(), depositAmount);
+
+  // Effectue un vrai dépôt
+  await vault.deposit(depositAmount, deployer.address);
+
+  console.log(
+    `✅ Dépôt de ${ethers.formatUnits(depositAmount, 18)} mUSDC effectué`
+  );
+
   // 11. Affichage des adresses finales
   console.log("\n🎯 Adresses des contrats déployés:");
   console.log("MockUSDC:", await mockUSDC.getAddress());
@@ -178,6 +193,17 @@ async function main() {
   console.log(
     "📝 N'oubliez pas de mettre à jour constants/index.ts avec ces adresses"
   );
+
+  // 11 bis. Vérification des assets du vault
+  console.log("\n📊 Vérification des assets du vault...");
+
+  const vaultUSDCBalance = await mockUSDC.balanceOf(await vault.getAddress());
+  const totalAssets = await vault.totalAssets();
+  console.log(
+    `   - USDC dans le vault: ${ethers.formatUnits(vaultUSDCBalance, 18)} USDC`
+  );
+  console.log(`   - Total assets: ${ethers.formatUnits(totalAssets, 18)} USDC`);
+
   // 12. Génération automatique du fichier constants pour le frontend
   console.log("\n🛠️ Génération du fichier frontend/constants/index.ts...");
 

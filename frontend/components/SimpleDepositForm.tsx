@@ -9,7 +9,7 @@ import vaultAbiJson from '@/abis/Vault.abi.json'
 import { vaultAddress, mockTokenAddresses } from '@/constants'
 import { useVault } from '@/context/VaultContext'
 import { useTokenRegistry } from '@/context/TokenRegistryContext'
-import { useRWASnapshot } from '@/hooks/useRWASnapshot'
+// import { useRWASnapshot } from '@/hooks/useRWASnapshot' // 🚫 PHASE 1 - Supprimé
 import { useUserHistory } from '@/utils/useUserHistory'
 import {
   Card,
@@ -45,7 +45,7 @@ const SimpleDepositForm: React.FC = () => {
   const { isConnected, address: userAddress } = useAccount()
   const { assetDecimals, refreshUserData } = useVault()
   const { allocations } = useTokenRegistry()
-  const { createSnapshot } = useRWASnapshot()
+  // const { createSnapshot } = useRWASnapshot() // 🚫 PHASE 1 - Supprimé
   const { refetchHistory } = useUserHistory(userAddress, 18)
 
   // Récupérer le solde USDC de l'utilisateur
@@ -174,8 +174,11 @@ const SimpleDepositForm: React.FC = () => {
               }
             }
 
-            // Créer le snapshot avec les prix oracle actuels
-            createSnapshot(savedAmount, allocations, prices)
+            // ✅ PHASE 1 - Plus besoin de créer un snapshot
+            // La logique ERC-4626 convertToAssets(userShares) gère tout automatiquement
+            console.log(
+              '✅ Dépôt réussi - convertToAssets(userShares) sera mis à jour automatiquement'
+            )
           } catch (error) {
             console.error('Erreur lors de la création du snapshot RWA:', error)
           }

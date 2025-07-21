@@ -13,7 +13,7 @@ const formatValueAsUSDC = formatUSDCValue
 
 const RWABreakdown: React.FC = () => {
   const { userShares, refreshUserData } = useVault()
-  const { currentValue, breakdown, isFallback, warning } = useUserPortfolio()
+  const { currentValue, breakdown, warning } = useUserPortfolio()
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Fonction de refresh manuel
@@ -21,6 +21,8 @@ const RWABreakdown: React.FC = () => {
     setIsRefreshing(true)
     try {
       await Promise.all([refreshUserData()])
+      // Déclencher un refresh du portfolio
+      window.dispatchEvent(new CustomEvent('portfolio-refresh'))
     } catch {
       // Erreur silencieuse
     } finally {
@@ -56,9 +58,10 @@ const RWABreakdown: React.FC = () => {
     )
   }
 
-  // Utiliser le portefeuille utilisateur calculé
+  // ✅ Utiliser le portefeuille utilisateur calculé via convertToAssets(userShares)
   const displayBalances = breakdown || []
-  // Calculer la somme des valeurs individuelles pour s'assurer de la cohérence
+
+  // ✅ Calculer la somme des valeurs individuelles pour vérifier la cohérence
   const calculatedTotalValue = displayBalances.reduce(
     (sum, item) => sum + item.currentValue,
     0
@@ -114,8 +117,8 @@ const RWABreakdown: React.FC = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Warning si fallback */}
-        {isFallback && warning && (
+        {/* Warning si désynchronisation détectée */}
+        {warning && (
           <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <div className="flex items-center gap-2">
               <span className="text-yellow-600">⚠️</span>
@@ -124,7 +127,7 @@ const RWABreakdown: React.FC = () => {
           </div>
         )}
 
-        {/* Total de la valeur RWA */}
+        {/* ✅ Total de la valeur RWA (doit correspondre à convertToAssets(userShares)) */}
         <div className="p-4 bg-blue-50 rounded-lg">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-blue-700">
@@ -134,9 +137,15 @@ const RWABreakdown: React.FC = () => {
               {formatValueAsUSDC(displayTotalValue)}
             </span>
           </div>
+          {/* ✅ Indicateur de cohérence */}
+          {Math.abs(displayTotalValue - currentValue) < 0.01 && (
+            <div className="text-xs text-green-600 mt-1">
+              ✓ Cohérent avec convertToAssets(userShares)
+            </div>
+          )}
         </div>
 
-        {/* Détail par token */}
+        {/* ✅ Détail par token - données réelles on-chain */}
         <div className="space-y-3">
           {displayBalances.map((item: PortfolioToken) => (
             <div key={item.tokenAddress} className="space-y-2">

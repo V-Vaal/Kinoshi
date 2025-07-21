@@ -1,3 +1,8 @@
+// 🚫 PHASE 1 - HOOK DÉPRÉCIÉ : useRWASnapshot.ts
+// Ce hook a été remplacé par la logique ERC-4626 convertToAssets(userShares)
+// Il sera supprimé définitivement après validation de la nouvelle logique
+
+/*
 import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { formatUnits } from 'viem'
@@ -171,4 +176,17 @@ function getTokenSymbol(tokenAddress: string): string {
     '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9': 'EQUITY',
   }
   return TOKEN_SYMBOLS[tokenAddress] || 'UNKNOWN'
+}
+*/
+
+// ✅ NOUVELLE LOGIQUE : Utiliser convertToAssets(userShares) directement
+// Plus besoin de snapshots locaux - tout est calculé on-chain via ERC-4626
+export const useRWASnapshot = () => {
+  return {
+    snapshot: null,
+    createSnapshot: () => {},
+    updateSnapshotOnWithdrawal: () => {},
+    applyWithdrawalToSnapshot: () => ({}),
+    clearSnapshot: () => {},
+  }
 }

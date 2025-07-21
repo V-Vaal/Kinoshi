@@ -172,7 +172,8 @@ contract Vault is ERC4626, AccessControl, Pausable, ReentrancyGuard {
             uint256 allocationAmount = (assets * allocation.weight) / 1e18;
             
             // Plus besoin de conversion, tous les tokens ont 18 décimales
-            uint256 rwaAmount = allocationAmount;
+             (uint256 price, ) = oracle.getPrice(allocation.token);
+             uint256 rwaAmount = (allocationAmount * 1e18) / price;
             
             // Mint les RWA
             (bool success, ) = allocation.token.call(
@@ -203,8 +204,9 @@ contract Vault is ERC4626, AccessControl, Pausable, ReentrancyGuard {
             // Calculer l'allocation (tous les tokens en 18 décimales)
             uint256 allocationAmount = (assets * allocation.weight) / 1e18;
             
-            // Plus besoin de conversion, tous les tokens ont 18 décimales
-            uint256 rwaAmount = allocationAmount;
+            // ✅ Calculer la quantité de tokens RWA selon le prix (comme dans _mockAllocate)
+            (uint256 price, ) = oracle.getPrice(allocation.token);
+            uint256 rwaAmount = (allocationAmount * 1e18) / price;
             
             IERC20MintableBurnable(allocation.token).burn(address(this), rwaAmount);
         }
