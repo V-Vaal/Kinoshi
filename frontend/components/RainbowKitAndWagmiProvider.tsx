@@ -21,7 +21,7 @@ const chainsByEnv = {
 }
 
 const activeChains =
-  chainsByEnv[chainEnv as keyof typeof chainsByEnv] || chainsByEnv.localhost
+  chainsByEnv[chainEnv as keyof typeof chainsByEnv] || chainsByEnv.sepolia
 
 // Configuration wagmi + RainbowKit centralisée
 const config = getDefaultConfig({

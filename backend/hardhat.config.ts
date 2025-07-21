@@ -40,20 +40,12 @@ const config: HardhatUserConfig = {
     outDir: "typechain-types",
     target: "ethers-v6",
   },
-};
-module.exports = {
-  solidity: "0.8.28",
-  networks: {
-    sepolia: {
-      url: process.env.RPC_URL_SEPOLIA || "",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      chainId: 11155111,
-    },
-  },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
   },
 };
 
-//port default config;
-export default module.exports;
+
+
+export default config;
+

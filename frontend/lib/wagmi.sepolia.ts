@@ -1,4 +1,4 @@
-import { createConfig, http } from 'wagmi'
+/*import { createConfig, http } from 'wagmi'
 import { sepolia } from 'wagmi/chains'
 import { injected, walletConnect } from 'wagmi/connectors'
 import { networkConfig } from '../constants/index.sepolia'
@@ -15,7 +15,7 @@ import { networkConfig } from '../constants/index.sepolia'
  * - Configuration RPC personnalisée
  * - Support des variables d'environnement
  */
-export const wagmiConfig = createConfig({
+/*export const wagmiConfig = createConfig({
   chains: [sepolia],
   transports: {
     [sepolia.id]: http(
@@ -57,4 +57,4 @@ export const getExplorerUrl = (
   type: 'address' | 'tx' = 'address'
 ) => {
   return `${networkConfig.explorer}/${type}/${address}`
-}
+}*/
