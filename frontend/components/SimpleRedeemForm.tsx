@@ -9,7 +9,7 @@ import vaultAbiJson from '@/abis/Vault.abi.json'
 import { vaultAddress } from '@/constants'
 import { useVault } from '@/context/VaultContext'
 import { useUserPortfolio } from '@/hooks/useUserPortfolio'
-// import { useRWASnapshot } from '@/hooks/useRWASnapshot' // 🚫 PHASE 1 - Supprimé
+
 import {
   Card,
   CardContent,
@@ -46,7 +46,6 @@ const SimpleRedeemForm: React.FC = () => {
   const { isConnected, address } = useAccount()
   const { decimals, assetDecimals } = useVault()
   const { currentValue: maxWithdrawable } = useUserPortfolio()
-  // const { updateSnapshotOnWithdrawal } = useRWASnapshot() // 🚫 PHASE 1 - Supprimé
 
   // Le montant maximum retirable reste le même (les frais sont prélevés sur le montant demandé)
   const maxWithdrawableAmount =

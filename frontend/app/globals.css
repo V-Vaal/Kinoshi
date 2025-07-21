@@ -44,82 +44,118 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-  /* Kinoshi color palette */
-  --kinoshi-primary: #61a291;
-  --kinoshi-gold: #e5deb9;
-  --kinoshi-background: #f5f3ed;
-  --kinoshi-surface: #fafaf7;
-  --kinoshi-text: #232323;
-  --kinoshi-muted: #a6a6a6;
-  --kinoshi-border: #e5deb9;
-  --kinoshi-danger: #e94f4f;
-  --kinoshi-success: #b7d6c1;
-  --kinoshi-accent: #cdd2b1;
+
+  /* Nouvelle palette Kinoshi - Tons naturels et chaleureux */
+  /* Inspirée de l'image de fond avec des verts, bruns et dorés */
+
+  /* Couleurs de base */
+  --background: oklch(0.98 0.005 85); /* Blanc cassé très chaleureux */
+  --foreground: oklch(0.15 0.02 85); /* Brun très foncé */
+
+  /* Cards et surfaces */
+  --card: oklch(0.99 0.003 85); /* Blanc cassé légèrement plus clair */
+  --card-foreground: oklch(0.15 0.02 85);
+  --popover: oklch(0.99 0.003 85);
+  --popover-foreground: oklch(0.15 0.02 85);
+
+  /* Couleurs principales - Vert nature chaleureux */
+  --primary: oklch(0.65 0.12 140); /* Vert forêt chaleureux */
+  --primary-foreground: oklch(0.98 0.005 85);
+
+  /* Couleurs secondaires - Doré naturel */
+  --secondary: oklch(0.92 0.08 85); /* Doré très pâle */
+  --secondary-foreground: oklch(0.25 0.05 85); /* Brun moyen */
+
+  /* Couleurs d'accent - Vert mousse */
+  --accent: oklch(0.88 0.06 140); /* Vert mousse très pâle */
+  --accent-foreground: oklch(0.25 0.05 85);
+
+  /* Couleurs neutres */
+  --muted: oklch(0.95 0.01 85); /* Gris très chaleureux */
+  --muted-foreground: oklch(0.45 0.03 85); /* Gris moyen chaleureux */
+
+  /* Bordures et inputs */
+  --border: oklch(0.9 0.02 85); /* Gris clair chaleureux */
+  --input: oklch(0.95 0.01 85);
+  --ring: oklch(0.65 0.12 140);
+
+  /* Couleurs spéciales */
+  --destructive: oklch(0.65 0.2 25); /* Rouge-brun chaleureux */
+
+  /* Charts - Palette naturelle */
+  --chart-1: oklch(0.65 0.12 140); /* Vert forêt */
+  --chart-2: oklch(0.7 0.15 60); /* Doré */
+  --chart-3: oklch(0.6 0.1 180); /* Bleu-vert */
+  --chart-4: oklch(0.75 0.12 120); /* Vert clair */
+  --chart-5: oklch(0.55 0.08 200); /* Bleu-gris */
+
+  /* Sidebar */
+  --sidebar: oklch(0.97 0.01 85);
+  --sidebar-foreground: oklch(0.15 0.02 85);
+  --sidebar-primary: oklch(0.65 0.12 140);
+  --sidebar-primary-foreground: oklch(0.98 0.005 85);
+  --sidebar-accent: oklch(0.92 0.08 85);
+  --sidebar-accent-foreground: oklch(0.25 0.05 85);
+  --sidebar-border: oklch(0.9 0.02 85);
+  --sidebar-ring: oklch(0.65 0.12 140);
+
+  /* Palette Kinoshi étendue - Tons naturels */
+  --kinoshi-primary: oklch(0.65 0.12 140); /* Vert forêt */
+  --kinoshi-secondary: oklch(0.7 0.15 60); /* Doré */
+  --kinoshi-accent: oklch(0.88 0.06 140); /* Vert mousse */
+  --kinoshi-background: oklch(0.98 0.005 85); /* Blanc cassé */
+  --kinoshi-surface: oklch(0.99 0.003 85); /* Blanc cassé plus clair */
+  --kinoshi-text: oklch(0.15 0.02 85); /* Brun très foncé */
+  --kinoshi-muted: oklch(0.45 0.03 85); /* Gris moyen */
+  --kinoshi-border: oklch(0.9 0.02 85); /* Gris clair */
+  --kinoshi-success: oklch(0.7 0.12 140); /* Vert succès */
+  --kinoshi-warning: oklch(0.75 0.15 60); /* Doré warning */
+  --kinoshi-danger: oklch(0.65 0.2 25); /* Rouge-brun */
+  --kinoshi-info: oklch(0.6 0.1 180); /* Bleu-vert */
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Mode sombre - Tons naturels plus foncés mais toujours chaleureux */
+  --background: oklch(0.08 0.01 85); /* Brun très foncé */
+  --foreground: oklch(0.95 0.01 85); /* Blanc cassé */
+
+  --card: oklch(0.12 0.02 85); /* Brun foncé */
+  --card-foreground: oklch(0.95 0.01 85);
+  --popover: oklch(0.12 0.02 85);
+  --popover-foreground: oklch(0.95 0.01 85);
+
+  --primary: oklch(0.7 0.15 140); /* Vert plus lumineux */
+  --primary-foreground: oklch(0.08 0.01 85);
+
+  --secondary: oklch(0.18 0.05 85); /* Brun moyen */
+  --secondary-foreground: oklch(0.95 0.01 85);
+
+  --accent: oklch(0.15 0.03 140); /* Vert sombre */
+  --accent-foreground: oklch(0.95 0.01 85);
+
+  --muted: oklch(0.15 0.02 85); /* Gris sombre */
+  --muted-foreground: oklch(0.65 0.03 85); /* Gris clair */
+
+  --border: oklch(0.2 0.02 85); /* Gris plus clair */
+  --input: oklch(0.15 0.02 85);
+  --ring: oklch(0.7 0.15 140);
+
+  --destructive: oklch(0.7 0.25 25); /* Rouge plus lumineux */
+
+  --chart-1: oklch(0.7 0.15 140);
+  --chart-2: oklch(0.75 0.18 60);
+  --chart-3: oklch(0.65 0.12 180);
+  --chart-4: oklch(0.8 0.15 120);
+  --chart-5: oklch(0.6 0.1 200);
+
+  --sidebar: oklch(0.12 0.02 85);
+  --sidebar-foreground: oklch(0.95 0.01 85);
+  --sidebar-primary: oklch(0.7 0.15 140);
+  --sidebar-primary-foreground: oklch(0.08 0.01 85);
+  --sidebar-accent: oklch(0.18 0.05 85);
+  --sidebar-accent-foreground: oklch(0.95 0.01 85);
+  --sidebar-border: oklch(0.2 0.02 85);
+  --sidebar-ring: oklch(0.7 0.15 140);
 }
 
 @layer base {

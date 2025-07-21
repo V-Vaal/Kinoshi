@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useUser } from '@/context/UserContext'
 
 interface AdminRedirectProps {
@@ -11,15 +11,16 @@ interface AdminRedirectProps {
 const AdminRedirect: React.FC<AdminRedirectProps> = ({ children }) => {
   const { isAdmin, loadingRole } = useUser()
   const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
-    if (!loadingRole && isAdmin) {
+    if (!loadingRole && isAdmin && pathname !== '/admin') {
       router.replace('/admin')
     }
-  }, [isAdmin, loadingRole, router])
+  }, [isAdmin, loadingRole, router, pathname])
 
-  // Si admin, ne rien afficher (redirection en cours)
-  if (isAdmin) {
+  // Si admin et pas sur la page admin, ne rien afficher (redirection en cours)
+  if (isAdmin && pathname !== '/admin') {
     return null
   }
 

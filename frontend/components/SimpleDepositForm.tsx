@@ -8,9 +8,9 @@ import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
 import vaultAbiJson from '@/abis/Vault.abi.json'
 import { vaultAddress, mockTokenAddresses } from '@/constants'
 import { useVault } from '@/context/VaultContext'
+import MintMockUSDC from '@/components/MintMockUSDC'
 import { useTokenRegistry } from '@/context/TokenRegistryContext'
-// import { useRWASnapshot } from '@/hooks/useRWASnapshot' // 🚫 PHASE 1 - Supprimé
-import { useUserHistory } from '@/utils/useUserHistory'
+import { useUserHistory } from '@/hooks/useUserHistory'
 import {
   Card,
   CardContent,
@@ -45,7 +45,7 @@ const SimpleDepositForm: React.FC = () => {
   const { isConnected, address: userAddress } = useAccount()
   const { assetDecimals, refreshUserData } = useVault()
   const { allocations } = useTokenRegistry()
-  // const { createSnapshot } = useRWASnapshot() // 🚫 PHASE 1 - Supprimé
+
   const { refetchHistory } = useUserHistory(userAddress, 18)
 
   // Récupérer le solde USDC de l'utilisateur
@@ -221,7 +221,14 @@ const SimpleDepositForm: React.FC = () => {
       // Dispatcher l'événement d'erreur
       window.dispatchEvent(new Event('deposit-error'))
     }
-  }, [isTxSuccess, isTxError, refreshUserData])
+  }, [
+    isTxSuccess,
+    isTxError,
+    refreshUserData,
+    allocations,
+    amount,
+    refetchHistory,
+  ])
 
   const handleDeposit = async () => {
     if (!amount || !assetDecimals || !isConnected || !userAddress) {
@@ -371,6 +378,8 @@ const SimpleDepositForm: React.FC = () => {
   return (
     <Card>
       <CardHeader>
+        {/* Bouton MintMockUSDC intégré */}
+
         <CardTitle className="flex items-center gap-2">
           <ArrowDown className="w-5 h-5" />
           Déposer des fonds
@@ -402,7 +411,9 @@ const SimpleDepositForm: React.FC = () => {
             </p>
           )}
         </div>
-
+        <div className="w-FULL flex justify-center">
+          <MintMockUSDC />
+        </div>
         <Button
           onClick={handleDeposit}
           disabled={isDisabled}

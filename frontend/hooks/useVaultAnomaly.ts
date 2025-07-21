@@ -99,13 +99,15 @@ export function useVaultAnomaly(): VaultAnomalyData {
     detectVaultAnomaly()
   }, [detectVaultAnomaly])
 
-  // Rafraîchir périodiquement (toutes les 30 secondes)
+  // Écouter les événements de refresh
   useEffect(() => {
-    if (!isConnected) return
+    const handler = () => {
+      detectVaultAnomaly()
+    }
 
-    const interval = setInterval(detectVaultAnomaly, 30000)
-    return () => clearInterval(interval)
-  }, [isConnected, detectVaultAnomaly])
+    window.addEventListener('vault-refresh', handler)
+    return () => window.removeEventListener('vault-refresh', handler)
+  }, [detectVaultAnomaly])
 
   return {
     ...data,

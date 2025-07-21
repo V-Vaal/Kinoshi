@@ -8,7 +8,7 @@ import React, {
   ReactNode,
 } from 'react'
 import { useAccount } from 'wagmi'
-import { useVaultRoles } from '@/utils/useVaultRoles'
+import { useVaultRoles } from '@/hooks/useVaultRoles'
 
 export type Strategie = 'equilibree' | 'sure' | 'dynamique'
 

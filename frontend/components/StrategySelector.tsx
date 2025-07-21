@@ -8,9 +8,9 @@ const STRATEGIES = [
     key: 'defensif',
     label: 'Défensif',
     allocations: [
-      { asset: "Obligations d'État", percent: 60 },
-      { asset: 'Or (mPAXG)', percent: 30 },
-      { asset: 'Cash (stables)', percent: 10 },
+      { asset: "Obligations d'État sécurisées", percent: 60 },
+      { asset: 'Or physique garanti', percent: 30 },
+      { asset: 'Monnaies stables', percent: 10 },
     ],
     color: 'bg-blue-100 border-blue-300',
     text: 'text-blue-900',
@@ -21,10 +21,10 @@ const STRATEGIES = [
     key: 'equilibree',
     label: 'Équilibrée',
     allocations: [
-      { asset: 'mUSDS', percent: 35 },
-      { asset: 'mBcSPX', percent: 30 },
-      { asset: 'mPAXG', percent: 20 },
-      { asset: 'mBTC', percent: 15 },
+      { asset: 'Monnaies stables diversifiées', percent: 35 },
+      { asset: 'Actions américaines (S&P 500)', percent: 30 },
+      { asset: 'Or physique garanti', percent: 20 },
+      { asset: 'Bitcoin', percent: 15 },
     ],
     color: 'bg-green-100 border-green-300',
     text: 'text-green-900',
@@ -35,9 +35,9 @@ const STRATEGIES = [
     key: 'agressif',
     label: 'Agressif',
     allocations: [
-      { asset: 'mBTC', percent: 50 },
-      { asset: 'Actions US', percent: 30 },
-      { asset: 'Stables', percent: 20 },
+      { asset: 'Bitcoin', percent: 50 },
+      { asset: 'Actions américaines', percent: 30 },
+      { asset: 'Monnaies stables', percent: 20 },
     ],
     color: 'bg-red-100 border-red-300',
     text: 'text-red-900',
@@ -73,7 +73,9 @@ const StrategySelector: React.FC = () => {
       ? 'defensif'
       : profile.toLowerCase() === 'agressif'
         ? 'agressif'
-        : 'equilibree'
+        : profile.toLowerCase() === 'équilibré'
+          ? 'equilibree'
+          : 'equilibree' // Par défaut
     : null
 
   return (
@@ -108,21 +110,21 @@ const StrategySelector: React.FC = () => {
                 >
                   {strat.label}
                 </span>
-                {isActive && (
-                  <span
-                    className={`ml-2 px-2 py-1 rounded-full text-xs font-bold shadow ${strat.badge}`}
-                  >
-                    Stratégie active
-                  </span>
-                )}
-                {isRecommended && (
-                  <span className="ml-2 px-2 py-1 rounded-full text-xs font-bold shadow bg-sky-200 text-sky-900 border border-sky-400">
-                    Stratégie recommandée
-                  </span>
-                )}
-                {strat.disabled && (
-                  <Info className="w-4 h-4 text-gray-400 ml-1" />
-                )}
+                <div className="flex flex-wrap gap-1 ml-2">
+                  {isActive && (
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-bold shadow ${strat.badge}`}
+                    >
+                      Stratégie active
+                    </span>
+                  )}
+                  {isRecommended && !isActive && (
+                    <span className="px-2 py-1 rounded-full text-xs font-bold shadow bg-sky-200 text-sky-900 border border-sky-400">
+                      Stratégie recommandée
+                    </span>
+                  )}
+                  {strat.disabled && <Info className="w-4 h-4 text-gray-400" />}
+                </div>
               </div>
               <ul className="mt-2 space-y-1">
                 {strat.allocations.map((a, i) => (

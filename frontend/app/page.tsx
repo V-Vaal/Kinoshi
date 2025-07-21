@@ -16,15 +16,19 @@ export default function Home() {
     if (loadingRole) return
 
     if (isConnected && address) {
+      // Redirection immédiate pour l'admin
+      if (isAdmin) {
+        router.replace('/admin')
+        return
+      }
+
       const hasProfile =
         typeof window !== 'undefined' &&
         localStorage.getItem(
           `kinoshi-risk-profile-${address.toLowerCase()}`
         ) !== null
 
-      if (isAdmin) {
-        router.replace('/admin')
-      } else if (hasProfile) {
+      if (hasProfile) {
         router.replace('/portefeuille')
       } else {
         router.replace('/profil')

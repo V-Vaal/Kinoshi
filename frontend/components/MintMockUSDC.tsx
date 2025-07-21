@@ -9,10 +9,9 @@ import { writeContract, readContract } from 'wagmi/actions'
 import { wagmiConfig } from '@/components/RainbowKitAndWagmiProvider'
 import mockUSDCAbiJson from '@/abis/MockUSDC.abi.json'
 import type { Abi } from 'viem'
-import { formatUnits } from 'viem'
 
 const MintMockUSDC: React.FC = () => {
-  const { address, isAdmin, isVisitor } = useUser()
+  const { address, isVisitor } = useUser()
   const { refreshUserData } = useVault()
   const [loading, setLoading] = useState(false)
   const [userBalance, setUserBalance] = useState<bigint | null>(null)
@@ -43,10 +42,6 @@ const MintMockUSDC: React.FC = () => {
     fetchBalance()
   }, [address, loading])
 
-  // ✅ MockUSDC n'a pas de contrôle d'accès, tout utilisateur connecté peut mint
-  const hasRiskProfile =
-    typeof window !== 'undefined' &&
-    localStorage.getItem('kinoshi-risk-profile') !== null
   if (isVisitor || !address) return null
 
   const handleMint = async () => {
@@ -83,14 +78,6 @@ const MintMockUSDC: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center my-6">
-      <div className="text-center mb-4">
-        <p className="text-sm text-gray-600 mb-2">
-          Solde actuel :{' '}
-          {userBalance === null
-            ? '...'
-            : `${formatUnits(userBalance, 18)} USDC`}
-        </p>
-      </div>
       <KinoshiButton
         onClick={handleMint}
         disabled={loading || hasEnough}

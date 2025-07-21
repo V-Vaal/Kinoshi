@@ -10,7 +10,7 @@ import {
   KinoshiCardContent,
   KinoshiButton,
 } from '@/components/ui'
-import MintMockUSDC from '@/components/MintMockUSDC'
+
 import StrategySelector from '@/components/StrategySelector'
 import AuthGuard from '@/components/AuthGuard'
 import AdminRedirect from '@/components/AdminRedirect'
@@ -79,8 +79,8 @@ const ProfilePage: React.FC = () => {
     return (
       <AuthGuard requireProfile={false}>
         <AdminRedirect>
-          <div className="container mx-auto px-4 py-8">
-            <KinoshiCard variant="outlined" className="max-w-2xl mx-auto">
+          <div className="w-full max-w-7xl mx-auto px-4 py-8">
+            <KinoshiCard variant="outlined" className="w-full">
               <KinoshiCardHeader>
                 <KinoshiCardTitle>
                   Complétez votre profil de risque
@@ -110,8 +110,8 @@ const ProfilePage: React.FC = () => {
   return (
     <AuthGuard requireProfile={false}>
       <AdminRedirect>
-        <div className="container mx-auto px-4 py-8">
-          <KinoshiCard variant="outlined" className="max-w-2xl mx-auto">
+        <div className="w-full max-w-7xl mx-auto px-4 py-8">
+          <KinoshiCard variant="outlined" className="w-full">
             <KinoshiCardHeader>
               <KinoshiCardTitle>Votre profil de risque</KinoshiCardTitle>
             </KinoshiCardHeader>
@@ -155,7 +155,6 @@ const ProfilePage: React.FC = () => {
                   </KinoshiButton>
                 </div>
               </div>
-              <MintMockUSDC />
               <StrategySelector />
 
               {/* Bouton ajouté */}

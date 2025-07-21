@@ -1,4 +1,4 @@
-import { useUserHistory } from '@/utils/useUserHistory'
+import { useUserHistory } from '@/hooks/useUserHistory'
 import { useAccount } from 'wagmi'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'

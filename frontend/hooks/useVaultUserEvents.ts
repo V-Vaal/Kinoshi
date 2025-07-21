@@ -106,7 +106,7 @@ export function useVaultUserEvents(userAddress?: string) {
             : {}
           return {
             type: 'withdraw' as const,
-            amount: (args.assets as bigint) ?? 0n,
+            amount: (args.assets as bigint) ?? 0n, // Correction: assets selon l'ABI
             txHash: log.transactionHash,
             blockNumber: Number(log.blockNumber),
           }
@@ -126,69 +126,63 @@ export function useVaultUserEvents(userAddress?: string) {
         }),
       ]
 
-      // Récupérer les timestamps des blocs (en batch)
-      const blockNumbers = Array.from(
-        new Set(allLogs.map((log) => log.blockNumber))
-      )
-      const blockTimestamps: Record<number, number> = {}
-
-      if (blockNumbers.length > 0) {
-        await Promise.all(
-          blockNumbers.map(async (blockNumber) => {
-            try {
-              const block = await publicClient.getBlock({
-                blockNumber: BigInt(blockNumber),
-              })
-              blockTimestamps[Number(blockNumber)] = Number(
-                block?.timestamp ?? 0
-              )
-            } catch (err) {
-              console.warn(`Failed to get block ${blockNumber}:`, err)
-              blockTimestamps[Number(blockNumber)] = 0
-            }
-          })
+      // Récupérer les timestamps pour chaque block
+      const blockNumbers = [...new Set(allLogs.map((log) => log.blockNumber))]
+      const blocks = await Promise.all(
+        blockNumbers.map((blockNumber) =>
+          publicClient.getBlock({ blockNumber: BigInt(blockNumber) })
         )
-      }
+      )
 
-      // Ajouter le timestamp à chaque event
-      const eventsWithTimestamps = allLogs.map((log) => ({
+      const blockTimestamps = new Map(
+        blocks.map((block) => [Number(block.number), Number(block.timestamp)])
+      )
+
+      // Ajouter les timestamps aux events
+      const eventsWithTimestamps: VaultUserEvent[] = allLogs.map((log) => ({
         ...log,
-        timestamp: blockTimestamps[Number(log.blockNumber)] ?? 0,
+        timestamp: blockTimestamps.get(log.blockNumber) ?? 0,
       }))
 
-      // Trier par blockNumber croissant
-      eventsWithTimestamps.sort(
-        (a, b) => Number(a.blockNumber) - Number(b.blockNumber)
-      )
+      // Trier par timestamp décroissant (plus récent en premier)
+      eventsWithTimestamps.sort((a, b) => b.timestamp - a.timestamp)
 
       console.log('✅ Events processed:', eventsWithTimestamps.length)
-      setEvents(eventsWithTimestamps as VaultUserEvent[])
+      setEvents(eventsWithTimestamps)
     } catch (err) {
       console.error('❌ Error fetching vault events:', err)
       setError(err as Error)
-      setEvents([])
     } finally {
       setLoading(false)
     }
   }, [userAddress, publicClient])
 
-  // Fetch initial et écouter les événements de refresh
+  // Fetch initial events
   useEffect(() => {
     fetchEvents()
+  }, [fetchEvents])
 
+  // Refresh events when user address changes
+  useEffect(() => {
+    if (userAddress) {
+      fetchEvents()
+    }
+  }, [userAddress, fetchEvents])
+
+  // Écouter les événements de refresh
+  useEffect(() => {
     const handler = () => {
-      console.log('🔄 Refreshing vault events...')
       fetchEvents()
     }
 
     window.addEventListener('vault-refresh', handler)
-    window.addEventListener('user-data-refresh', handler)
-
-    return () => {
-      window.removeEventListener('vault-refresh', handler)
-      window.removeEventListener('user-data-refresh', handler)
-    }
+    return () => window.removeEventListener('vault-refresh', handler)
   }, [fetchEvents])
 
-  return { events, loading, error, refetch: fetchEvents }
+  return {
+    events,
+    loading,
+    error,
+    refetch: fetchEvents,
+  }
 }

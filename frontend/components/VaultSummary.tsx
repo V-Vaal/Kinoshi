@@ -1,7 +1,7 @@
 'use client'
 
 import { useAccount } from 'wagmi'
-import { useUserHistory } from '@/utils/useUserHistory'
+import { useUserHistory } from '@/hooks/useUserHistory'
 import { useVault } from '@/context/VaultContext'
 import { useUserPortfolio } from '@/hooks/useUserPortfolio'
 import {
