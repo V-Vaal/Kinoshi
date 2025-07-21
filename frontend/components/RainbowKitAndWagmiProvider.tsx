@@ -15,9 +15,9 @@ import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
 const chainEnv = process.env.NEXT_PUBLIC_CHAIN_ENV || 'localhost'
 
 const chainsByEnv = {
-  localhost: [hardhat] as const,
-  sepolia: [sepolia] as const,
-  mainnet: [mainnet] as const,
+ localhost: [hardhat] as const,
+ // sepolia: [sepolia] as const,
+ //ainnet: [mainnet] as const,
 }
 
 const activeChains =

@@ -1,22 +1,3 @@
-// constants/index.sepolia.ts
-
-// 🔐 Adresses des contrats déployés sur Sepolia
-// 💡 Généré automatiquement par le script de déploiement Sepolia
-// 📝 Configuration spécifique au réseau de test Sepolia
-// ⚠️  REMPLACER PAR LES VRAIES ADRESSES APRÈS DÉPLOIEMENT
-
-export const vaultAddress = '0x0000000000000000000000000000000000000000' // À remplacer
-export const tokenRegistryAddress = '0x0000000000000000000000000000000000000000' // À remplacer
-
-export const mockTokenAddresses = {
-  mUSDC: '0x0000000000000000000000000000000000000000', // À remplacer
-  mGOLD: '0x0000000000000000000000000000000000000000', // À remplacer
-  mBTC: '0x0000000000000000000000000000000000000000', // À remplacer
-  mBONDS: '0x0000000000000000000000000000000000000000', // À remplacer
-  mEQUITY: '0x0000000000000000000000000000000000000000', // À remplacer
-}
-
-export const mockOracleAddress = '0x0000000000000000000000000000000000000000' // À remplacer
 
 // Configuration réseau Sepolia
 export const networkConfig = {
@@ -24,7 +5,7 @@ export const networkConfig = {
   name: 'Sepolia',
   rpcUrl:
     process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA ||
-    'https://sepolia.infura.io/v3/your-project-id',
+    'RPC_URL_SEPOLIA=https://eth-sepolia.g.alchemy.com/v2/spa0bQSwKrxHU_Z1HR3AO',
   explorer: 'https://sepolia.etherscan.io',
   nativeCurrency: {
     name: 'Sepolia Ether',
