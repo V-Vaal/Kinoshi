@@ -32,6 +32,8 @@ async function main() {
   const constantsContent = `// vault.sepolia.ts\n\nexport const vaultAddress = "${await vault.getAddress()}";\nexport const treasuryAddress = "0x88FF1addA3981367e6Da1f64E5f5e8b1c61Fd8bA";\n`;
   writeFileSync(frontendConstantsPath, constantsContent, "utf-8");
   console.log("✅ Fichier frontend/constants/vault.sepolia.ts généré");
+  console.log("✅ Vault déployé à:", await vault.getAddress());
+  console.log("\n🎯 Adresse du Vault:", await vault.getAddress());
 }
 
 main().catch((error) => {

@@ -247,7 +247,11 @@ async function main() {
 
   export const mockOracleAddress = "${await mockPriceFeed.getAddress()}";
   `;
-
+  await hre.run("verify:verify", {
+    address: vault.address,
+    constructorArguments: [...],
+  })
+  
   try {
     writeFileSync(frontendConstantsPath, constantsContent, "utf-8");
     console.log(

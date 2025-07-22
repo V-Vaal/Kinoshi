@@ -28,14 +28,14 @@ async function main() {
   // Adresses des contrats (à remplacer par les vraies adresses après déploiement)
   // Ces adresses doivent être mises à jour après chaque déploiement
   const CONTRACT_ADDRESSES = {
-    vault: "0x...", // Adresse du Vault
-    tokenRegistry: "0x...", // Adresse du TokenRegistry
-    mockPriceFeed: "0x...", // Adresse du MockPriceFeed
-    mockUSDC: "0x...", // Adresse du MockUSDC
-    mockGold: "0x...", // Adresse du MockGold
-    mockBTC: "0x...", // Adresse du MockBTC
-    mockBonds: "0x...", // Adresse du MockBonds
-    mockEquity: "0x...", // Adresse du MockEquity
+    vault: "0xE1752CB99678b5f2679A2Ae23CC479447FA01c1f", // Adresse du Vault
+    tokenRegistry: "0x9D174cF76CAFFB271a02D92E83A259b8455E327C", // Adresse du TokenRegistry
+    mockPriceFeed: "0x3bdD022F03961DB8AfB9dD11daFc93AE2dc00a7C", // Adresse du MockPriceFeed
+    mockUSDC: "0x779Ac1DbfA515735584946dE0B63E7Ff5Bc7A743", // Adresse du MockUSDC
+    mockGold: "0x20bb92Cb9C356e044E64Ad3b92BFb29e61bEfBf6", // Adresse du MockGold
+    mockBTC: "0x515ae1E0d488AC39309289fa6a9d25425f3e29c7", // Adresse du MockBTC
+    mockBonds: "0xDA5e992bE6DeBaB5DD117c1D159AF9ac5d9C36Ba", // Adresse du MockBonds
+    mockEquity: "0xEaB742DAF3cCcd542e6608893AEf5AE1BCE760a3", // Adresse du MockEquity
   };
 
   console.log("\n📋 Vérification des contrats...");
