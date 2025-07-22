@@ -39,4 +39,4 @@ async function main() {
 main().catch((error) => {
   console.error("❌ Erreur lors du déploiement du Vault:", error);
   process.exitCode = 1;
-}); 
+});

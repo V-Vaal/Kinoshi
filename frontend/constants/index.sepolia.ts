@@ -1,4 +1,3 @@
-
 // Configuration réseau Sepolia
 export const networkConfig = {
   chainId: 11155111,

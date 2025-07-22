@@ -2,6 +2,7 @@ import { ethers } from "hardhat";
 import { parseUnits } from "ethers";
 import { writeFileSync } from "fs";
 import { join } from "path";
+import hre from "hardhat";
 
 /**
  * Script de déploiement complet pour l'écosystème Kinoshi
@@ -247,11 +248,22 @@ async function main() {
 
   export const mockOracleAddress = "${await mockPriceFeed.getAddress()}";
   `;
-  await hre.run("verify:verify", {
-    address: vault.address,
-    constructorArguments: [...],
-  })
-  
+  try {
+    await hre.run("verify:verify", {
+      address: await vault.getAddress(),
+      constructorArguments: [
+        await mockUSDC.getAddress(),
+        "Équilibrée",
+        deployer.address,
+        await tokenRegistry.getAddress(),
+        await mockPriceFeed.getAddress(),
+      ],
+    });
+    console.log("✅ Contrat Vault vérifié sur Etherscan");
+  } catch (error) {
+    console.error("❌ Erreur lors de la vérification du Vault:", error);
+  }
+
   try {
     writeFileSync(frontendConstantsPath, constantsContent, "utf-8");
     console.log(

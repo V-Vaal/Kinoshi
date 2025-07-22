@@ -26,7 +26,9 @@ const activeChains =
 // Configuration wagmi + RainbowKit centralisée
 const config = getDefaultConfig({
   appName: 'Kinoshi',
-  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '80a20fd75ed562869992eb8b7ae5161d',
+  projectId:
+    process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ||
+    '80a20fd75ed562869992eb8b7ae5161d',
   chains: activeChains,
   ssr: true, // Support SSR pour Next.js
   wallets: [

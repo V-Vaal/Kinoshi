@@ -40,7 +40,11 @@ async function main() {
   await tokenRegistry.registerToken(await mockGold.getAddress(), "mGOLD", 18);
   await tokenRegistry.registerToken(await mockBTC.getAddress(), "mBTC", 18);
   await tokenRegistry.registerToken(await mockBonds.getAddress(), "mBONDS", 18);
-  await tokenRegistry.registerToken(await mockEquity.getAddress(), "mEQUITY", 18);
+  await tokenRegistry.registerToken(
+    await mockEquity.getAddress(),
+    "mEQUITY",
+    18
+  );
 
   // Déploiement du MockPriceFeed
   const MockPriceFeed = await ethers.getContractFactory("MockPriceFeed");
